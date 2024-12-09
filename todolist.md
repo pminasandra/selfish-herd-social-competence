@@ -1,0 +1,6 @@
+- [ ] mirroring group to restrict to unit square
+- [ ] compute voronoi diagram + areas
+- [ ] gradient-descent movement rules
+- [ ] make classes SelfishAgent and SelfishHerd
+- [ ] implement recursive reasoning for social competence
+- [ ] DBSCAN for detection of groups
