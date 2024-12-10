@@ -93,14 +93,15 @@ def everyone_do_grad_descent(locations, vor):
 
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(100, 2))
+    locs = np.random.uniform(size=(50, 2))
     vor = voronoi.get_bounded_voronoi(locs)
 
-    fig, ax = plt.subplots()
-    ax.set_xlim((-0.05, 1.05))
-    ax.set_ylim((-0.05, 1.05))
+    fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
+    ax.set_xlim((-0.1, 1.1))
+    ax.set_ylim((-0.1, 1.1))
 
     def update(i):
+        print(i, end="\033[K\r")
         global locs
         global vor
         ax.clear()
@@ -110,12 +111,12 @@ if __name__ == "__main__":
                         line_alpha=0.2, show_points=False)
 
         ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
-        ax.set_xlim((-0.05, 1.05))
-        ax.set_ylim((-0.05, 1.05))
-#        ax.axvline(0, linestyle="dotted", linewidth=0.3)
-#        ax.axvline(1, linestyle="dotted", linewidth=0.3)
-#        ax.axhline(0, linestyle="dotted", linewidth=0.3)
-#        ax.axhline(1, linestyle="dotted", linewidth=0.3)
+        ax.set_xlim((-0.1, 1.1))
+        ax.set_ylim((-0.1, 1.1))
+        ax.axvline(0, linestyle="dotted", linewidth=0.3)
+        ax.axvline(1, linestyle="dotted", linewidth=0.3)
+        ax.axhline(0, linestyle="dotted", linewidth=0.3)
+        ax.axhline(1, linestyle="dotted", linewidth=0.3)
 
-    ani = FuncAnimation(fig, update, frames=2000, interval=30)
-    ani.save("movement.mp4", writer="ffmpeg")
+    ani = FuncAnimation(fig, update, frames=300, interval=30)
+    ani.save("movement.gif", writer="ffmpeg")
