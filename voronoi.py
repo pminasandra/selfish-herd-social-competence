@@ -48,6 +48,12 @@ def mirror_unit_sq(locations):
     mirrored_locs = np.vstack(mirrored_locs)
     return mirrored_locs
 
+def get_bounded_voronoi(locations):
+    mirr_locs = mirror_unit_sq(locations)
+    pseudolocs = np.vstack((locations, mirr_locs))
+
+    return Voronoi(pseudolocs)
+
 def get_areas(locations, voronoi):
     num_loc = locations.shape[0]
     areas = []
@@ -64,12 +70,10 @@ def get_areas(locations, voronoi):
         curr_loc += 1
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(200, 2))
-    mirrored_locs = mirror_unit_sq(locs)
+    locs = np.random.uniform(size=(10, 2))
 
-    pseudopoints = np.vstack((locs, mirrored_locs))
+    vor  = get_bounded_voronoi(locs)
 
-    vor = Voronoi(pseudopoints)
     fig, ax = plt.subplots()
     voronoi_plot_2d(vor, ax=ax, show_vertices=False, linewidth=0.2, show_points=False)
 
