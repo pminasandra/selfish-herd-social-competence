@@ -4,6 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial import Voronoi, voronoi_plot_2d
 
 """
 Provides methods to construct Voronoi polygons for groups of simulated animals
@@ -46,11 +47,13 @@ if __name__ == "__main__":
     locs = np.random.uniform(size=(20, 2))
     mirrored_locs = mirror_unit_sq(locs)
 
-    plt.scatter(locs[:, 0], locs[:, 1], color="black", s=0.3)
-    plt.scatter(mirrored_locs[:, 0], mirrored_locs[:, 1], color="gray", s=0.3)
+    pseudopoints = np.vstack((locs, mirrored_locs))
 
-    plt.axvline(0, linestyle="dotted", linewidth=0.3)
-    plt.axvline(1, linestyle="dotted", linewidth=0.3)
-    plt.axhline(0, linestyle="dotted", linewidth=0.3)
-    plt.axhline(1, linestyle="dotted", linewidth=0.3)
+    vor = Voronoi(pseudopoints)
+    fig, ax = plt.subplots()
+    voronoi_plot_2d(vor, ax=ax, show_vertices=False, linewidth=0.2, point_size=0.75)
+    ax.axvline(0, linestyle="dotted", linewidth=0.3)
+    ax.axvline(1, linestyle="dotted", linewidth=0.3)
+    ax.axhline(0, linestyle="dotted", linewidth=0.3)
+    ax.axhline(1, linestyle="dotted", linewidth=0.3)
     plt.show()
