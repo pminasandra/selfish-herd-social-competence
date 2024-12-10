@@ -1,5 +1,5 @@
-- [ ] mirroring group to restrict to unit square
-- [ ] compute voronoi diagram + areas
+- [x] mirroring group to restrict to unit square
+- [x] compute voronoi diagram + areas
 - [ ] gradient-descent movement rules
 - [ ] make classes SelfishAgent and SelfishHerd
 - [ ] implement recursive reasoning for social competence

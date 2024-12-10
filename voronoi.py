@@ -11,6 +11,11 @@ Provides methods to construct Voronoi polygons for groups of simulated animals
 and compute their areas.
 """
 
+def polygon_area(vertices):
+    """Calculate the area of a polygon given its vertices."""
+    x, y = vertices[:, 0], vertices[:, 1]
+    return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+
 def mirror_bottom(locations):
     new_locs = locations.copy()
     new_locs[:, 1] *= -1.0
@@ -43,15 +48,33 @@ def mirror_unit_sq(locations):
     mirrored_locs = np.vstack(mirrored_locs)
     return mirrored_locs
 
+def get_areas(locations, voronoi):
+    num_loc = locations.shape[0]
+    areas = []
+    curr_loc = 0
+    for region_idx in voronoi.point_region:
+        if curr_loc >= num_loc:
+            return np.array(areas)
+        region = voronoi.regions[region_idx]
+        if -1 in region:
+            raise ValueError("somehow encountered an infinite Voronoi polygon!")
+        else:
+            polygon = voronoi.vertices[region]
+            areas.append(polygon_area(polygon))
+        curr_loc += 1
+
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(20, 2))
+    locs = np.random.uniform(size=(200, 2))
     mirrored_locs = mirror_unit_sq(locs)
 
     pseudopoints = np.vstack((locs, mirrored_locs))
 
     vor = Voronoi(pseudopoints)
     fig, ax = plt.subplots()
-    voronoi_plot_2d(vor, ax=ax, show_vertices=False, linewidth=0.2, point_size=0.75)
+    voronoi_plot_2d(vor, ax=ax, show_vertices=False, linewidth=0.2, show_points=False)
+
+    areas = get_areas(locs, vor)
+    ax.scatter(locs[:, 0], locs[:, 1], s=0.4, color="black")
     ax.axvline(0, linestyle="dotted", linewidth=0.3)
     ax.axvline(1, linestyle="dotted", linewidth=0.3)
     ax.axhline(0, linestyle="dotted", linewidth=0.3)
