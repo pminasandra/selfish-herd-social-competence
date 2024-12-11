@@ -2,6 +2,8 @@
 # pminasandra.github.io
 # Dec 10, 2024
 
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -30,20 +32,27 @@ def gradient_for_id(id_, locations, vor, areas):
     area_guy = areas[id_]
 
     # find d/dx
+    flip = random.random()
+
     new_locs = locations.copy()
-    new_locs[id_, 0] += config.GRAD_DESC_DX
+    if flip > 0.5:
+        sign = -1.0
+    else:
+        sign = 1.0
+
+    new_locs[id_, 0] += sign*config.GRAD_DESC_DX
 
     vor_new = voronoi.get_bounded_voronoi(new_locs)
     areas_new = voronoi.get_areas(new_locs, vor_new)
-    ddx_area = -(area_guy - areas_new[id_])/config.GRAD_DESC_DX
+    ddx_area = -(area_guy - areas_new[id_])/config.GRAD_DESC_DX*sign
 
     # find d/dy
     new_locs = locations.copy()
-    new_locs[id_, 1] += config.GRAD_DESC_DY
+    new_locs[id_, 1] += sign*config.GRAD_DESC_DY
 
     vor_new = voronoi.get_bounded_voronoi(new_locs)
     areas_new = voronoi.get_areas(new_locs, vor_new)
-    ddy_area = -(area_guy - areas_new[id_])/config.GRAD_DESC_DY
+    ddy_area = -(area_guy - areas_new[id_])/config.GRAD_DESC_DY*sign
 
     return np.array([ddx_area, ddy_area])
 
@@ -83,17 +92,17 @@ def everyone_do_grad_descent(locations, vor):
     for id_ in range(len(locations)):
         movement = -capped_grad(id_, locations, vor, areas)*config.GRAD_DESC_MULTPL_FACTOR
         new_loc = locations[id_, :] + movement
-        new_loc[0] = max(0, new_loc[0])
-        new_loc[0] = min(1, new_loc[0])
-        new_loc[1] = max(0, new_loc[1])
-        new_loc[1] = min(1, new_loc[1])
+        new_loc[0] = max(0.01, new_loc[0])
+        new_loc[0] = min(0.99, new_loc[0])
+        new_loc[1] = max(0.01, new_loc[1])
+        new_loc[1] = min(0.99, new_loc[1])
         new_locs.append(new_loc)
 
     return np.array(new_locs)
 
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(50, 2))
+    locs = np.random.uniform(size=(5, 2))
     vor = voronoi.get_bounded_voronoi(locs)
 
     fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
