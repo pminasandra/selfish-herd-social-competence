@@ -101,6 +101,55 @@ def everyone_do_grad_descent(locations, vor):
     return np.array(new_locs)
 
 
+def one_guy_one_recursion(id_, my_loc, vor, predicted_locations):
+    predicted_locations_with_me = predicted_locations.copy()
+    predicted_locations_with_me[id_] = my_loc
+
+    new_vor = voronoi.get_bounded_voronoi(predicted_locations_with_me)
+    areas_new = voronoi.get_areas(predicted_locations_with_me, new_vor)
+    movement = -capped_grad(id_, predicted_locations_with_me, 
+                        new_vor, areas_new)*config.GRAD_DESC_MULTPL_FACTOR
+
+    new_loc = my_loc + movement
+    new_loc[0] = max(0.01, new_loc[0])
+    new_loc[0] = min(0.99, new_loc[0])
+    new_loc[1] = max(0.01, new_loc[1])
+    new_loc[1] = min(0.99, new_loc[1])
+
+    return new_loc
+
+def group_one_recursion(locations, vor):
+    predicted_locations = everyone_do_grad_descent(locations, vor)
+    new_locs = []
+    for id_ in range(len(locations)):
+        my_loc = locations[id_, :]
+        new_loc = one_guy_one_recursion(id_, my_loc, vor, predicted_locations)
+
+        new_locs.append(new_loc)
+
+    return np.array(new_locs)
+
+
+def recursive_reasoning(locations, vor, curr_depth, desired_depth, orig_locations):
+    if curr_depth == desired_depth:
+        return locations
+
+    new_locs = group_one_recursion(locations, vor)
+    new_updated_locs = []
+    for id_ in range(len(orig_locations)):
+        new_locs_with_me = new_locs.copy()
+        new_locs_with_me[id_] = orig_locations[id_]
+
+        new_vor = voronoi.get_bounded_voronoi(new_locs_with_me)
+        new_pred_locs = group_one_recursion(new_locs_with_me, new_vor)
+        my_new_loc = new_pred_locs[id_]
+        new_updated_locs.append(my_new_loc)
+
+    new_updated_locs = np.array(new_updated_locs)
+    new_vor = voronoi.get_bounded_voronoi(new_updated_locs)
+    recursive_reasoning(new_updated_locs, new_vor, curr_depth+1, desired_depth, orig_locations)
+
+
 if __name__ == "__main__":
     locs = np.random.uniform(size=(5, 2))
     vor = voronoi.get_bounded_voronoi(locs)
