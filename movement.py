@@ -130,11 +130,13 @@ def group_one_recursion(locations, vor):
     return np.array(new_locs)
 
 
-def recursive_reasoning(locations, vor, curr_depth, desired_depth, orig_locations):
-    if curr_depth == desired_depth:
-        return locations
+def recursive_reasoning(locations, vor, desired_depth, orig_locations, curr_depth=0):
+    if desired_depth == 0:
+        return everyone_do_grad_descent(locations, vor)
 
     new_locs = group_one_recursion(locations, vor)
+    if desired_depth == curr_depth:
+        return new_locs
     new_updated_locs = []
     for id_ in range(len(orig_locations)):
         new_locs_with_me = new_locs.copy()
@@ -147,11 +149,11 @@ def recursive_reasoning(locations, vor, curr_depth, desired_depth, orig_location
 
     new_updated_locs = np.array(new_updated_locs)
     new_vor = voronoi.get_bounded_voronoi(new_updated_locs)
-    recursive_reasoning(new_updated_locs, new_vor, curr_depth+1, desired_depth, orig_locations)
+    return recursive_reasoning(new_updated_locs, new_vor, desired_depth, orig_locations, curr_depth=curr_depth+1)
 
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(5, 2))
+    locs = np.random.uniform(size=(25, 2))
     vor = voronoi.get_bounded_voronoi(locs)
 
     fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
@@ -163,7 +165,7 @@ if __name__ == "__main__":
         global locs
         global vor
         ax.clear()
-        locs = everyone_do_grad_descent(locs, vor)
+        locs = recursive_reasoning(locs, vor, 2, locs)
         vor = voronoi.get_bounded_voronoi(locs)
         voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_width=0.3, 
                         line_alpha=0.2, show_points=False)
@@ -177,4 +179,4 @@ if __name__ == "__main__":
         ax.axhline(1, linestyle="dotted", linewidth=0.3)
 
     ani = FuncAnimation(fig, update, frames=300, interval=30)
-    ani.save("movement.gif", writer="ffmpeg")
+    ani.save("movement_d2.gif", writer="ffmpeg")
