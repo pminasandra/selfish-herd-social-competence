@@ -44,7 +44,7 @@ class SelfishHerd:
         """
 
         for i in range(t):
-            locs = self.records.copy()[-1]
+            locs = self.records.copy()[:,:,-1]
             vor = voronoi.get_bounded_voronoi(locs)
 
             next_locs = movement.recursive_reasoning(locs, vor, self.depth,
@@ -60,3 +60,9 @@ class SelfishHerd:
         with open(filename, "wb") as file_obj:
             pickle.dump(self.records, file_obj)
 
+
+    def __str__(self):
+        return f"SelfishHerd object with {self.n} individuals and {self.records.shape[2]} rows of data."
+
+    def __repr__(self):
+        return self.__str__()
