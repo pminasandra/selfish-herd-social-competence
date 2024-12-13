@@ -131,22 +131,33 @@ def group_one_recursion(locations, vor):
 
 
 def recursive_reasoning(locations, vor, desired_depth, orig_locations, curr_depth=0):
+
+    # desired_depth == 0 -> normal gradient descent
     if desired_depth == 0:
         return everyone_do_grad_descent(locations, vor)
 
-    new_locs = group_one_recursion(locations, vor)
+    #desired_depth == 1 -> one-recursion gradient descent
+    elif desired_depth == 1:
+        return group_one_recursion(locations, vor)
+
     if desired_depth == curr_depth:
-        return new_locs
+        return locations
+    # first do one recursion
+    new_locs = everyone_do_grad_descent(locations, vor)
     new_updated_locs = []
     for id_ in range(len(orig_locations)):
+# then ask if everyone else were in these new locations,
+# where should I go?
         new_locs_with_me = new_locs.copy()
         new_locs_with_me[id_] = orig_locations[id_]
 
         new_vor = voronoi.get_bounded_voronoi(new_locs_with_me)
-        new_pred_locs = group_one_recursion(new_locs_with_me, new_vor)
+        new_pred_locs = everyone_do_grad_descent(new_locs_with_me, new_vor)
         my_new_loc = new_pred_locs[id_]
         new_updated_locs.append(my_new_loc)
 
+# after everyone has asked this question, store their new
+# movement decisions. Recurse on these new choices.
     new_updated_locs = np.array(new_updated_locs)
     new_vor = voronoi.get_bounded_voronoi(new_updated_locs)
     return recursive_reasoning(new_updated_locs, new_vor, desired_depth, orig_locations, curr_depth=curr_depth+1)
@@ -178,5 +189,5 @@ if __name__ == "__main__":
         ax.axhline(0, linestyle="dotted", linewidth=0.3)
         ax.axhline(1, linestyle="dotted", linewidth=0.3)
 
-    ani = FuncAnimation(fig, update, frames=300, interval=30)
+    ani = FuncAnimation(fig, update, frames=200, interval=30)
     ani.save("movement_d2.gif", writer="ffmpeg")
