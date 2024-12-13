@@ -62,7 +62,7 @@ def capped_grad(id_, locations, vor, areas):
     Computes capped gradient of voronoi area for one individual.
     Args:
         id_ (int): index of individual in question
-        locations (np.array, n×2)
+        locations (np.array, n*2)
         vor (scipy.spatial.Voronoi object)
         areas (np.array): output from voronoi.get_areas(...)
     Returns:
@@ -81,7 +81,7 @@ def everyone_do_grad_descent(locations, vor):
     """
     Performs one iteration of gradient descent with all individuals.
     Args:
-        locations (np.array, n×2)
+        locations (np.array, n*2)
         vor (scipy.spatial.Voronoi object)
     Returns:
         np.array, new locations, same shape as locations
@@ -90,7 +90,8 @@ def everyone_do_grad_descent(locations, vor):
     areas = voronoi.get_areas(locations, vor)
     new_locs = []
     for id_ in range(len(locations)):
-        movement = -capped_grad(id_, locations, vor, areas)*config.GRAD_DESC_MULTPL_FACTOR
+        movement = -capped_grad(id_, locations, vor,
+                        areas)*config.GRAD_DESC_MULTPL_FACTOR
         new_loc = locations[id_, :] + movement
         new_loc[0] = max(0.01, new_loc[0])
         new_loc[0] = min(0.99, new_loc[0])
@@ -130,8 +131,20 @@ def group_one_recursion(locations, vor):
     return np.array(new_locs)
 
 
-def recursive_reasoning(locations, vor, desired_depth, orig_locations, curr_depth=0):
-
+def recursive_reasoning(locations, vor, desired_depth,
+                        orig_locations, curr_depth=0):
+    """
+    Performs movement decisions with theory of mind for a desired depth of
+    reasoning.
+    Args:
+        locations (np.array, n*2)
+        vor (scipy.spatial.Voronoi object)
+        desired_depth (int): how many recursions animals will do.
+        orig_locations (np.array, n*2): original locations without ANY
+        modifications.
+    Returns:
+        np.array, new locations, same shape as locations
+    """
     # desired_depth == 0 -> normal gradient descent
     if desired_depth == 0:
         return everyone_do_grad_descent(locations, vor)
@@ -160,7 +173,8 @@ def recursive_reasoning(locations, vor, desired_depth, orig_locations, curr_dept
 # movement decisions. Recurse on these new choices.
     new_updated_locs = np.array(new_updated_locs)
     new_vor = voronoi.get_bounded_voronoi(new_updated_locs)
-    return recursive_reasoning(new_updated_locs, new_vor, desired_depth, orig_locations, curr_depth=curr_depth+1)
+    return recursive_reasoning(new_updated_locs, new_vor, desired_depth,
+                                orig_locations, curr_depth=curr_depth+1)
 
 
 if __name__ == "__main__":
