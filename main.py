@@ -20,8 +20,10 @@ def runmodel(herd, filename):
 
 if __name__ == "__main__":
     if config.RUN_SIMS:
-        depth_dirs = [joinpath(config.DATA, f"d{depth}")\
-                        for depth in config.DEPTHS_OF_REASONING]
+        depth_dirs = []
+        for pop_size in config.POP_SIZES:
+            depth_dirs.append([joinpath(config.DATA, pop_size, f"d{depth}")\
+                            for depth in config.DEPTHS_OF_REASONING])
         [os.makedirs(dir_, exist_ok=True) for dir_ in depth_dirs]
 
         for pop_size in config.POP_SIZES:
@@ -34,8 +36,8 @@ if __name__ == "__main__":
                 print("Depth of reasoning:", depth)
                 herds = [selfishherd.SelfishHerd(pop_size, depth, loc) for loc\
                             in inits]
-                filenames = [joinpath(config.DATA, f"d{depth}",
-                                    uname+f"-{depth}.pkl")\
+                filenames = [joinpath(config.DATA, pop_size, f"d{depth}",
+                                    f"{pop_size}-{depth}-uname.pkl")\
                                     for uname in init_names]
                 args = zip(herds, filenames)
                 
