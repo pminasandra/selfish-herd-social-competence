@@ -22,7 +22,7 @@ if __name__ == "__main__":
     if config.RUN_SIMS:
         depth_dirs = []
         for pop_size in config.POP_SIZES:
-            depth_dirs.append([joinpath(config.DATA, pop_size, f"d{depth}")\
+            depth_dirs.append([joinpath(config.DATA, str(pop_size), f"d{depth}")\
                             for depth in config.DEPTHS_OF_REASONING])
         [os.makedirs(dir_, exist_ok=True) for dir_ in depth_dirs]
 
