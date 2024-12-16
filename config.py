@@ -25,7 +25,7 @@ GRAD_DESC_MULTPL_FACTOR = 0.1
 # Program flow
 RUN_SIMS = True
 POP_SIZES = [50, 75, 100] #already have data for iterations 10, 25.
-DEPTHS_OF_REASONING = [0, 1, 2, 3]
+DEPTHS_OF_REASONING = [0, 1, 2]
 NUM_REPEATS = 500
 TMAX = 500
 
