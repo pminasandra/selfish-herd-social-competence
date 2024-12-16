@@ -165,8 +165,14 @@ def recursive_reasoning(locations, vor, desired_depth,
         new_locs_with_me[id_] = orig_locations[id_]
 
         new_vor = voronoi.get_bounded_voronoi(new_locs_with_me)
-        new_pred_locs = everyone_do_grad_descent(new_locs_with_me, new_vor)
-        my_new_loc = new_pred_locs[id_]
+        areas_new = voronoi.get_areas(new_locs_with_me, new_vor)
+        my_movement = -capped_grad(id_, new_locs_with_me, new_vor, areas_new)*\
+                            config.GRAD_DESC_MULTPL_FACTOR
+        my_new_loc = new_locs_with_me[id_] + my_movement
+        my_new_loc[0] = max(0.01, my_new_loc[0])
+        my_new_loc[0] = min(0.99, my_new_loc[0])
+        my_new_loc[1] = max(0.01, my_new_loc[1])
+        my_new_loc[1] = min(0.99, my_new_loc[1])
         new_updated_locs.append(my_new_loc)
 
 # after everyone has asked this question, store their new
@@ -178,24 +184,25 @@ def recursive_reasoning(locations, vor, desired_depth,
 
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(25, 2))
+    locs = np.random.uniform(size=(30, 2))
     vor = voronoi.get_bounded_voronoi(locs)
 
     fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
     ax.set_xlim((-0.1, 1.1))
     ax.set_ylim((-0.1, 1.1))
+    sc = ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
 
     def update(i):
         print(i, end="\033[K\r")
         global locs
         global vor
-        ax.clear()
+        global sc
         locs = recursive_reasoning(locs, vor, 2, locs)
-        vor = voronoi.get_bounded_voronoi(locs)
-        voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_width=0.3, 
-                        line_alpha=0.2, show_points=False)
+#        vor = voronoi.get_bounded_voronoi(locs)
+#        voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_width=0.3, 
+#                        line_alpha=0.2, show_points=False)
 
-        ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
+        sc.set_offsets(locs)
         ax.set_xlim((-0.1, 1.1))
         ax.set_ylim((-0.1, 1.1))
         ax.axvline(0, linestyle="dotted", linewidth=0.3)
@@ -204,4 +211,5 @@ if __name__ == "__main__":
         ax.axhline(1, linestyle="dotted", linewidth=0.3)
 
     ani = FuncAnimation(fig, update, frames=200, interval=30)
+    plt.show()
     ani.save("movement_d2.gif", writer="ffmpeg")
