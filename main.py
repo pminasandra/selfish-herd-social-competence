@@ -26,7 +26,8 @@ if __name__ == "__main__":
                             for depth in config.DEPTHS_OF_REASONING])
         [os.makedirs(dir_, exist_ok=True) for dir_ in depth_dirs]
 
-        for pop_size in config.POP_SIZES:
+        for p_size in config.POP_SIZES:
+            pop_size = str(p_size)
             print("Working on pop_size", pop_size)
             inits = [np.random.uniform(size=(pop_size, 2))\
                         for i in range(config.NUM_REPEATS)]
