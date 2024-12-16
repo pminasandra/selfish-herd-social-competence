@@ -5,12 +5,14 @@
 from os.path import join as joinpath
 import os
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 import config
 import measurements
 
+matplotlib.use("TkAgg")
 
 def animate_data(data, tmin=0, tmax=None):
 
@@ -41,8 +43,7 @@ def animate_data(data, tmin=0, tmax=None):
 
         return ax,
 
-    ani = FuncAnimation(fig, update, frames=tmax-tmin, blit=True, interval=30)
-    plt.show()
+    ani = FuncAnimation(fig, update, frames=tmax-tmin, interval=30, blit=False)
     return ani
 
 def save_animation(anim, name):
@@ -52,7 +53,7 @@ def save_animation(anim, name):
     anim.save(joinpath(anim_dir, name), writer="ffmpeg")
 
 if __name__ == "__main__":
-    tgt_file = measurements._files_for(10, 2)
+    tgt_file = measurements._files_for(10, 1)
     tgt_file = list(tgt_file)[0]
     tgt_file = measurements._read_data(tgt_file)
 
