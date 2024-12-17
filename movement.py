@@ -149,10 +149,6 @@ def recursive_reasoning(locations, vor, desired_depth,
     if desired_depth == 0:
         return everyone_do_grad_descent(locations, vor)
 
-    #desired_depth == 1 -> one-recursion gradient descent
-    elif desired_depth == 1:
-        return group_one_recursion(locations, vor)
-
     if desired_depth == curr_depth:
         return locations
     # first do one recursion
