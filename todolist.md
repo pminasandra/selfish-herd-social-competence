@@ -3,4 +3,5 @@
 - [x] gradient-descent movement rules
 - [x] make classes SelfishAgent and SelfishHerd
 - [x] implement recursive reasoning for social competence
-- [ ] DBSCAN for detection of groups
+- [x] DBSCAN for detection of groups
+- [ ] make ggplots for appropriate metrics

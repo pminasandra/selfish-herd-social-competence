@@ -9,10 +9,12 @@ such as number of groups formed and time to formation of groups.
 
 import glob
 from os.path import join as joinpath
+import os
 import os.path
 import pickle
 
 import numpy as np
+import pandas as pd
 from sklearn.cluster import DBSCAN
 
 import config
@@ -83,15 +85,39 @@ def average_typical_group_size(data, timerange, eps=0.005):
 
     return np.array(all_tgs).mean()
 
+
+def gen_row_of_g_sizes(positions, timerange, eps=0.005):
+    all_tgs_row = []
+    for t in timerange:
+        data_sub = positions[:,:,t].copy()
+        group_sizes_extract = group_sizes(dbscan(data_sub, eps=eps))
+
+        tgs = typical_group_size(group_sizes_extract)
+        all_tgs_row.append(tgs)
+    return all_tgs_row
+
+def make_csv_for(pop_size, depth, timerange, eps=0.005):
+    all_files = _files_for(pop_size, depth)
+    rows = []
+    for file_ in all_files:
+        data = _read_data(file_)
+        rows.append(gen_row_of_g_sizes(data, timerange, eps=eps))
+
+    col_labels =[f"t{time}" for time in timerange]
+
+    df = pd.DataFrame(rows, columns=col_labels)
+    return df
+
 if __name__ == "__main__":
     group_metrics = []
-    for depth in [0, 1, 2, 3]:
-        filenames = _files_for(25, depth)
-        all_data = [_read_data(file_) for file_ in filenames]
-
-        group_metrics_sub = [average_typical_group_size(data, range(200,501,50))
-                                for data in all_data]
-
-        print(depth, "-->", np.array(group_metrics_sub).mean())
-
-    print(group_metrics)
+    if not config.ANALYSE_DATA:
+        print("config.ANALYSE_DATA was False. Exiting.")
+        quit()
+    timerange = range(0, 501, 20)
+    os.makedirs(joinpath(config.DATA, "Results"), exist_ok=True)
+    for pop_size in config.ANALYSE_POP_SIZES:
+        for depth in config.ANALYSE_DEPTHS:
+            tgt_file = joinpath(config.DATA, "Results",
+                                    f"{pop_size}-d{depth}.csv")
+            data = make_csv_for(pop_size, depth, timerange)
+            data.to_csv(tgt_file, index=False)
