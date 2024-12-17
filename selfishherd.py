@@ -48,7 +48,7 @@ class SelfishHerd:
             vor = voronoi.get_bounded_voronoi(locs)
 
             next_locs = movement.recursive_reasoning(locs, vor, self.depth,
-                                                        self.init_locs)
+                                                        locs)
             self.records = np.dstack((self.records, next_locs))
 
 
