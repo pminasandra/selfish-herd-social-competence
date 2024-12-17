@@ -2,7 +2,7 @@
 # Dec 13, 2024
 # pminasandra.github.io
 
-
+import datetime as dt
 from os.path import join as joinpath
 import multiprocessing as mp
 import os
@@ -33,7 +33,7 @@ if __name__ == "__main__":
             init_names = [str(uuid.uuid4()) for i in range(config.NUM_REPEATS)]
 
             for depth in config.DEPTHS_OF_REASONING:
-                print("Depth of reasoning:", depth)
+                print(dt.datetime.now(), "Depth of reasoning:", depth)
                 herds = [selfishherd.SelfishHerd(pop_size, depth, loc) for loc\
                             in inits]
                 filenames = [joinpath(config.DATA, str(pop_size), f"d{depth}",
