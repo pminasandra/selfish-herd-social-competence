@@ -78,7 +78,7 @@ plot <- ggplot(long_data, aes(x = time, y = group_size, color = reasoning)) +
         axis.text.x = element_text(size = 12),
         axis.text.y = element_text(size = 12))
 
-ggsave(file.path(file.path(directory_path, "Figures"), "group_size_plot.pdf"), plot = plot, width = 8, height = 6, units = "in")
+ggsave(file.path(file.path(directory_path, "Figures"), "group_size_plot.pdf"), plot = plot, width = 8, height = 6, units = "cm")
 
 ## Data investigation
 
@@ -112,4 +112,4 @@ emmeans <- ggplot(pairwise_df, aes(x = reasoning, y = emmean, color = pop_size, 
   geom_line(size = 1) + geom_point(size = 2) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans, width = 8, height = 6, units = "in")
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans, width = 8, height = 6, units = "cm")
