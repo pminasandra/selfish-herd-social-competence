@@ -51,12 +51,13 @@ Make sure you have the following installed:
 - `pandas`
 
 Make the following directory structure:
-
+```
 Project-Directory/
 |
 |-- Data/
 |
 |-- Figures/
+```
 
 Further, in the Project-Directory, run:
 ```
