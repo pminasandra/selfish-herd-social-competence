@@ -163,3 +163,7 @@ cython_debug/
 #
 .cw
 *.gif
+
+.Rhistory
+.Rproj.user/
+
