@@ -53,9 +53,10 @@ def save_animation(anim, name):
     anim.save(joinpath(anim_dir, name), writer="ffmpeg")
 
 if __name__ == "__main__":
-    tgt_file = measurements._files_for(10, 1)
-    tgt_file = list(tgt_file)[0]
-    tgt_file = measurements._read_data(tgt_file)
+    for i in [0, 1, 2]:
+        tgt_file = measurements._files_for(75, i)
+        tgt_file = list(tgt_file)[0]
+        tgt_file = measurements._read_data(tgt_file)
 
-    anim = animate_data(tgt_file)
-    save_animation(anim, "movement_25_d3.gif")
+        anim = animate_data(tgt_file, tmax=100)
+        save_animation(anim, f"movement_75_d{i}.gif")
