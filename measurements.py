@@ -24,7 +24,9 @@ def _files_for(pop_size, depth):
     if not os.path.exists(dir_):
         return []
     else:
-        return glob.glob(joinpath(dir_, f"{pop_size}-{depth}-*.pkl"))
+        files_ = glob.glob(joinpath(dir_, f"{pop_size}-{depth}-*.pkl"))
+        files_.sort()
+        return files_
 
 def _read_data(filename):
     with open(filename, "rb") as file_obj:
@@ -101,9 +103,10 @@ def make_csv_for(pop_size, depth, timerange, eps=0.005):
     rows = []
     for file_ in all_files:
         data = _read_data(file_)
-        rows.append(gen_row_of_g_sizes(data, timerange, eps=eps))
+        uname = "-".join(file_[:-len(".pkl")].split("-")[2:])
+        rows.append([uname] + gen_row_of_g_sizes(data, timerange, eps=eps))
 
-    col_labels =[f"t{time}" for time in timerange]
+    col_labels =["uname"] + [f"t{time}" for time in timerange]
 
     df = pd.DataFrame(rows, columns=col_labels)
     return df
@@ -119,5 +122,5 @@ if __name__ == "__main__":
         for depth in config.ANALYSE_DEPTHS:
             tgt_file = joinpath(config.DATA, "Results",
                                     f"{pop_size}-d{depth}.csv")
-            data = make_csv_for(pop_size, depth, timerange)
+            data = make_csv_for(pop_size, depth, timerange, eps=0.02)
             data.to_csv(tgt_file, index=False)
