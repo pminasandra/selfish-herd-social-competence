@@ -21,7 +21,7 @@ GRAD_DESC_MAX_STEP_SIZE = 0.05
 GRAD_DESC_MULTPL_FACTOR = 0.1
 
 # Program flow
-RUN_SIMS = True
+RUN_SIMS = False
 POP_SIZES = [50, 75, 100] #already have data for iterations 10, 25.
 DEPTHS_OF_REASONING = [0, 1, 2]
 NUM_REPEATS = 500

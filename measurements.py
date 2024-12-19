@@ -18,6 +18,7 @@ import pandas as pd
 from sklearn.cluster import DBSCAN
 
 import config
+import voronoi
 
 def _files_for(pop_size, depth):
     dir_ = joinpath(config.DATA, str(pop_size), "d"+str(depth))
@@ -98,7 +99,18 @@ def gen_row_of_g_sizes(positions, timerange, eps=0.005):
         all_tgs_row.append(tgs)
     return all_tgs_row
 
-def make_csv_for(pop_size, depth, timerange, eps=0.005):
+def gen_row_of_g_areas(positions, timerange):
+    all_areas_row = []
+    for t in timerange:
+        data_sub = positions[:,:,t].copy()
+        vor = voronoi.get_bounded_voronoi(data_sub)
+        areas = voronoi.get_areas(data_sub, vor)
+
+        all_areas_row.append(np.median(areas))
+
+    return all_areas_row
+
+def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)
     rows = []
     for file_ in all_files:
@@ -111,6 +123,20 @@ def make_csv_for(pop_size, depth, timerange, eps=0.005):
     df = pd.DataFrame(rows, columns=col_labels)
     return df
 
+def make_area_csv_for(pop_size, depth, timerange, eps=0.005):
+    all_files = _files_for(pop_size, depth)
+    rows = []
+    for file_ in all_files:
+        data = _read_data(file_)
+        uname = "-".join(file_[:-len(".pkl")].split("-")[2:])
+        rows.append([uname] + gen_row_of_g_areas(data, timerange))
+
+    col_labels =["uname"] + [f"t{time}" for time in timerange]
+
+    df = pd.DataFrame(rows, columns=col_labels)
+    return df
+
+
 if __name__ == "__main__":
     group_metrics = []
     if not config.ANALYSE_DATA:
@@ -122,5 +148,5 @@ if __name__ == "__main__":
         for depth in config.ANALYSE_DEPTHS:
             tgt_file = joinpath(config.DATA, "Results",
                                     f"{pop_size}-d{depth}.csv")
-            data = make_csv_for(pop_size, depth, timerange, eps=0.02)
+            data = make_tgs_csv_for(pop_size, depth, timerange, eps=0.02)
             data.to_csv(tgt_file, index=False)

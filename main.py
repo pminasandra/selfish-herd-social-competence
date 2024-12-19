@@ -12,6 +12,7 @@ import numpy as np
 
 import config
 import selfishherd
+import measurements
 
 def runmodel(herd, filename):
     np.random.seed()
@@ -46,3 +47,23 @@ if __name__ == "__main__":
                 pool.close()
                 pool.join()
             print()
+
+    if config.ANALYSE_DATA:
+        group_metrics = []
+        timerange = range(0, 501, 20)
+        os.makedirs(joinpath(config.DATA, "Results"), exist_ok=True)
+        for pop_size in config.ANALYSE_POP_SIZES:
+            for depth in config.ANALYSE_DEPTHS:
+                tgs_file = joinpath(config.DATA, "Results",
+                                        f"{pop_size}-d{depth}.csv")
+                area_file = joinpath(config.DATA, "Results",
+                                        f"areas-{pop_size}-d{depth}.csv")
+                
+                tgs_data = measurements.make_tgs_csv_for(pop_size, depth,
+                                    timerange, eps=0.02)
+                tgs_data.to_csv(tgs_file, index=False)
+                
+                area_data = measurements.make_area_csv_for(pop_size,
+                                    depth, timerange)
+                area_data.to_csv(area_file, index=False)
+
