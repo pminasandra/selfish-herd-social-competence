@@ -28,7 +28,7 @@ if __name__ == "__main__":
         for pop_size in POP_SIZES:
             depth_dirs.extend([joinpath(config.DATA, str(pop_size),
                                 f"d{depth}")\
-                            for depth in config.DEPTHS_OF_REASONING])
+                            for depth in config.POP_S_DOR[pop_size]])
         [os.makedirs(dir_, exist_ok=True) for dir_ in depth_dirs]
 
         for pop_size in POP_SIZES:
