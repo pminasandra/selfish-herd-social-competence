@@ -23,12 +23,12 @@ GRAD_DESC_MULTPL_FACTOR = 0.1
 # Program flow
 RUN_SIMS = False
 POP_S_DOR = {
-10: []
-25: []
-35: [0, 1, 2, 3]
-50: [3]
-75: [3]
-87: [0, 1, 2, 3]
+10: [],
+25: [],
+50: [3],
+35: [0, 1, 2, 3],
+75: [3],
+87: [0, 1, 2, 3],
 100: [3]
 } # These are the missing pairs of population size and depth of reasoning.
 NUM_REPEATS = 500
