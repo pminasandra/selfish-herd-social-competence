@@ -43,7 +43,7 @@ if __name__ == "__main__":
                 print("Already found", len(list(existing_files)), "files.")
                 inits = [measurements._read_data(filename)[:,:,0]\
                             for filename in existing_files]
-                init_names = ["-".join(basename(f)[:-len(".pkl")].split("-")[2:]\
+                init_names = ["-".join(basename(f)[:-len(".pkl")].split("-")[2:])\
                                 for f in existing_files]
 
             for depth in config.POP_S_DOR[pop_size]:
