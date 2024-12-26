@@ -54,9 +54,9 @@ def save_animation(anim, name):
 
 if __name__ == "__main__":
     for i in [0, 1, 2]:
-        tgt_file = measurements._files_for(75, i)
-        tgt_file = list(tgt_file)[0]
+        tgt_file = measurements._files_for(100, i)
+        tgt_file = list(tgt_file)[20]
         tgt_file = measurements._read_data(tgt_file)
 
         anim = animate_data(tgt_file, tmax=100)
-        save_animation(anim, f"movement_75_d{i}.gif")
+        save_animation(anim, f"movement_100_d{i}.gif")
