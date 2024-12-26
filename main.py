@@ -25,7 +25,7 @@ if __name__ == "__main__":
     POP_SIZES = list(config.POP_S_DOR.keys())
     if config.RUN_SIMS:
         depth_dirs = []
-        for pop_size in config.POP_SIZES:
+        for pop_size in POP_SIZES:
             depth_dirs.extend([joinpath(config.DATA, str(pop_size),
                                 f"d{depth}")\
                             for depth in config.DEPTHS_OF_REASONING])
