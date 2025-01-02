@@ -23,20 +23,20 @@ GRAD_DESC_MULTPL_FACTOR = 0.1
 # Program flow
 RUN_SIMS = False
 POP_S_DOR = {
-10: [],
-25: [],
-50: [3],
+10: [0, 1, 2, 3],
+25: [0, 1, 2, 3],
+50: [0, 1, 2, 3],
 35: [0, 1, 2, 3],
-75: [3],
+75: [0, 1, 2, 3],
 87: [0, 1, 2, 3],
-100: [3]
+100: [0, 1, 2, 3]
 } # These are the missing pairs of population size and depth of reasoning.
 NUM_REPEATS = 500
 TMAX = 500
 
 # Data analysis
 ANALYSE_DATA = True
-ANALYSE_POP_SIZES = [10, 25, 50, 75, 100]
+ANALYSE_POP_SIZES = [10, 25, 35, 50, 75, 87, 100]
 ANALYSE_DEPTHS = [0, 1, 2, 3]
 
 #Miscellaneous
