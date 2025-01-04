@@ -117,11 +117,35 @@ emmeans_plot <- ggplot(pairwise_df, aes(x = reasoning, y = emmean, color = pop_s
   geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = pop_size), alpha = 0.2, color = NA) +
   labs(y= "EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
   theme_bw()
+
+# Normalize the emmean values relative to D0 for each population size
+pairwise_norm <- pairwise_df %>%
+  group_by(pop_size) %>%
+  mutate(normalized_emmean = emmean / emmean[reasoning == "d0"],
+         normalized_lower.CL = lower.CL / emmean[reasoning == "d0"],
+         normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
+
+# Create the plot with normalized values
+emmeans_norm <- ggplot(pairwise_norm, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
+  geom_line(linewidth = 1.5) + geom_point(size = 2) +
+  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.8) + # Add horizontal grey line
+  labs(y= "Normalized EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
+  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, 
+                  fill = pop_size), alpha = 0.05, color = NA) +
+  theme_bw()
+
 ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans_plot, width = 8, height = 6, units = "cm")
+
+ggplot(pairwise_df, aes(x = pop_size, y = emmean, color = pop_size, group = pop_size)) +
+  geom_line(linewidth = 1) +  geom_point(size = 2) +
+  labs(y = "EMMean", x = "Population Size", color = "Population Size") +
+  facet_wrap(~ reasoning, scales = "free_y", labeller = label_both) +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = "lightgrey"), strip.text = element_text(face = "bold"))
 
 
 ## Load area file from Data/median-area folder ####
-area_list <- list.files(path = file.path(directory_path, "Data/Results"), pattern = "*.csv", full.names = TRUE)
+area_list <- list.files(path = file.path(directory_path, "Data/Results"), pattern = "^areas.*\\.csv$", full.names = TRUE)
 
 area_list <- lapply(area_list, function(file) {
   data <- read.csv(file)
@@ -154,12 +178,18 @@ area_longdata <- area_data %>%
          pop_size = factor(pop_size, levels = unique(as.character(sort(as.numeric(pop_size))))),
          reasoning = as.factor(reasoning))
 
+area_longdata <- area_longdata %>%
+  mutate(pop_size_numeric = as.numeric(as.character(pop_size)),
+         area_scaled = area_size * pop_size_numeric) %>% 
+  select(- pop_size_numeric)
+
 ### EDA ####
 ggplot(area_longdata, aes(x = time, y = area_size, color = pop_size)) +
   #geom_line(aes(group = interaction(uname, pop_size, reasoning)), alpha = 0.7) +
   geom_point(size = 0.5, alpha = 0.8) +
   theme_bw() +
   facet_wrap(~pop_size)
+
 ggplot(area_longdata, aes(x = time, y = area_size, color = pop_size)) +
   geom_line(aes(group = interaction(uname, pop_size, reasoning)), alpha = 0.7) +
   #geom_point(size = 0.5, alpha = 0.8) +
@@ -170,11 +200,21 @@ ggplot(area_longdata, aes(x = time, y = area_size, color = pop_size)) +
         axis.text.y = element_text(size = 12)) +
   facet_wrap(~pop_size, scales = "free")
 
-plot_area <- ggplot(area_longdata, aes(x = time, y = area_size, color = reasoning)) +
+# plot_area <- ggplot(area_longdata, aes(x = time, y = area_size, color = reasoning)) +
+#   #geom_line(aes(group = interaction(uname, pop_size, reasoning)), alpha = 0.1) +
+#   geom_smooth(aes(group = interaction(pop_size, reasoning)), method = "loess", fill = 'orange') +
+#   facet_wrap(~pop_size, scales = "free") +
+#   labs(y= "Area Size", x = "Time (s)") +
+#   theme_bw() +
+#   theme(axis.title.x = element_text(size = 14),
+#         axis.title.y = element_text(size = 14),
+#         axis.text.x = element_text(size = 12),
+#         axis.text.y = element_text(size = 12))
+
+ggplot(area_longdata, aes(x = time, y = area_scaled, color = reasoning)) +
   #geom_line(aes(group = interaction(uname, pop_size, reasoning)), alpha = 0.1) +
   geom_smooth(aes(group = interaction(pop_size, reasoning)), method = "loess", fill = 'orange') +
-  #facet_wrap(~pop_size, scales = "free") +
-  scale_y_log10() +
+  facet_wrap(~pop_size) +
   labs(y= "Area Size", x = "Time (s)") +
   theme_bw() +
   theme(axis.title.x = element_text(size = 14),
@@ -206,6 +246,22 @@ emmeans_area <- ggplot(pairwise_area_df, aes(x = reasoning, y = emmean, color = 
   geom_line(linewidth = 1) + geom_point(size = 2) +
   labs(y= "EMMean Area", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
   geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = pop_size), alpha = 0.2, color = NA) + # Shaded CI
+  theme_bw()
+
+# Normalize the emmean values relative to D0 for each population size
+pairwise_area_norm <- pairwise_area_df %>%
+  group_by(pop_size) %>%
+  mutate(normalized_emmean = emmean / emmean[reasoning == "d0"],
+         normalized_lower.CL = lower.CL / emmean[reasoning == "d0"],
+         normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
+
+# Create the plot with normalized values
+emmeans_area_norm <- ggplot(pairwise_area_norm, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
+  geom_line(linewidth = 1.5) + geom_point(size = 2) +
+  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.8) + # Add horizontal grey line
+  labs(y= "Normalized EMMean Area", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
+  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, 
+                  fill = pop_size), alpha = 0.05, color = NA) +
   theme_bw()
 
 ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans, width = 8, height = 6, units = "cm")
