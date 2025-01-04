@@ -10,8 +10,10 @@ library(emmeans)
 directory <- here(".cw")
 directory_path <- sub("/$", "", readLines(directory, warn = FALSE))
 
-## Load group data from Data/groups folder ####
-group_list <- list.files(path = file.path(directory_path, "Data/groups"), pattern = "*.csv", full.names = TRUE)
+## Load group data from Data/Results folder ####
+group_list <- list.files(path = file.path(directory_path, "Data/Results"), 
+                         pattern = "^[0-9].*\\.csv$", 
+                         full.names = TRUE)
 
 group_list <- lapply(group_list, function(file) {
   data <- read.csv(file)
@@ -112,14 +114,14 @@ pairwise_df <- as.data.frame(emmeans(anova_result, ~ reasoning | pop_size))
 emmeans_plot <- ggplot(pairwise_df, aes(x = reasoning, y = emmean, color = pop_size, group = pop_size)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
-  geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = pop_size), alpha = 0.2, color = NA) + # Shaded CI
+  geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = pop_size), alpha = 0.2, color = NA) +
   labs(y= "EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
   theme_bw()
 ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans_plot, width = 8, height = 6, units = "cm")
 
 
 ## Load area file from Data/median-area folder ####
-area_list <- list.files(path = file.path(directory_path, "Data/median-area"), pattern = "*.csv", full.names = TRUE)
+area_list <- list.files(path = file.path(directory_path, "Data/Results"), pattern = "*.csv", full.names = TRUE)
 
 area_list <- lapply(area_list, function(file) {
   data <- read.csv(file)
