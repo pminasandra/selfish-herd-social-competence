@@ -67,9 +67,30 @@ git clone https://github.com/pminasandra/selfish-herd-social-competence code
 In the resulting code directory, create a file named `.cw` containing only one
 line: the complete file-path for Project-Directory/ 
 
-Then run `python3 main.py`. **Note:** simulating the trajectories requires a lot
+Then run `python3 main.py`.
+
+
+**Note:** simulating the trajectories requires a lot
 of computational power and will take a very long time. We will soon make our
 trajectories available for you to work with.
+
+
+## Reproducibility for R script
+
+The repository includes an R script `plot.R` that generated figures from the data. The script is set up to ensure that the required R libraries are installed and their versions match the development environment. This is managed using the `renv` package.
+
+The script automatically installs `renv` if not already installed:
+```
+if (!requireNamespace("renv", quietly = TRUE)) {
+  install.packages("renv") }
+```
+The script also restores the required R environment, ensuring all libraries and versions match the development setup:
+
+```
+renv::restore()
+```
+
+
 
 # Bibliography
 Hamilton, W. D. (1971). Geometry for the selfish herd. Journal of theoretical Biology, 31(2), 295-311.
