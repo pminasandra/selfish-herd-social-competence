@@ -164,14 +164,15 @@ pairwise_norm <- as.data.frame(emmeans_group) %>%
 
 # Create the plot with normalized values
 emmeans_norm <- ggplot(pairwise_norm, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
-  geom_line(linewidth = 1.5) + geom_point(size = 2) +
-  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.8) + # Add horizontal grey line
+  geom_line(linewidth = 1) + geom_point(size = 1.5) +
+  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.5) + 
   labs(y= "Normalized EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
   geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, 
                   fill = pop_size), alpha = 0.1, color = NA) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_group_size.pdf"), plot = emmeans_norm, width = 10, height = 8, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_group_size.pdf"), 
+       plot = emmeans_norm, width = 20, height = 15, units = "cm")
 
 ## Area ####
 # Convert into long format
@@ -207,7 +208,8 @@ plot_area <- ggplot(area_longdata, aes(x = time, y = area_scaled, color = reason
   labs(y= "Area Size", x = "Time (s)") +
   theme_bw() 
 
-ggsave(file.path(file.path(directory_path, "Figures"), "area_size_plot.pdf"), plot = plot_area, width = 10, height = 8, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "area_size_plot.pdf"), 
+       plot = plot_area, width = 20, height = 15, units = "cm")
 
 ### Data analysis ####
 average_area_size <- area_longdata %>%
@@ -266,4 +268,5 @@ emmeans_area_norm <- ggplot(pairwise_norm_area, aes(x = reasoning, y = normalize
                   fill = pop_size), alpha = 0.05, color = NA) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans_area_norm, width = 10, height = 8, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), 
+       plot = emmeans_area_norm, width = 20, height = 15, units = "cm")
