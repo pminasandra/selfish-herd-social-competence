@@ -29,12 +29,22 @@ load_and_process_data <- function(path, pattern, additional_processing = NULL) {
       message("Empty file: ", file, ", skipping")
       return(NULL)
     }
-    data$type <- gsub("\\.csv$", "", basename(file))
-    split_values <- strsplit(data$type, "-")
-    data$pop_size <- sapply(split_values, `[`, 1)
-    data$reasoning <- sapply(split_values, `[`, 2)
+    # Determine file type based on pattern
+    base_name <- gsub("\\.csv$", "", basename(file))
+    if (grepl("^[0-9].*\\.csv$", basename(file))) {
+      # Process group data format: pop_size-reasoning
+      split_values <- strsplit(base_name, "-")[[1]]
+      data$pop_size <- split_values[1]
+      data$reasoning <- split_values[2]
+    } else if (grepl("^areas.*\\.csv$", basename(file))) {
+      # Process area data format: areas-pop_size-reasoning
+      split_values <- strsplit(base_name, "-")[[1]]
+      data$pop_size <- split_values[2]
+      data$reasoning <- split_values[3]
+    } else {
+      stop("Unknown file naming format: ", file)
+    }
     
-    # Apply additional processing if provided
     if (!is.null(additional_processing)) {
       data <- additional_processing(data)
     }
@@ -45,19 +55,17 @@ load_and_process_data <- function(path, pattern, additional_processing = NULL) {
   return(bind_rows(data_list))
 }
 
+# Load group data
 group_data <- load_and_process_data(
   path = file.path(directory_path, "Data/Results"),
-  pattern = "^[0-9].*\\.csv$"
-) %>%
-  select(-type) %>%
+  pattern = "^[0-9].*\\.csv$") %>%
   relocate(pop_size, .after = uname) %>%
   relocate(reasoning, .after = pop_size)
 
+# Load area data
 area_data <- load_and_process_data(
   path = file.path(directory_path, "Data/Results"),
-  pattern = "^areas.*\\.csv$"
-) %>%
-  select(-type) %>%
+  pattern = "^areas.*\\.csv$") %>%
   relocate(pop_size, .after = uname) %>%
   relocate(reasoning, .after = pop_size)
 
@@ -72,7 +80,7 @@ group_longdata <- group_data %>%
                names_to = "time",
                values_to = "group_size") %>%
   mutate(time = as.numeric(gsub("t", "", time)),
-         pop_size = as.numeric(as.character(factor(pop_size, levels = c(10, 25, 35, 50, 75, 87, 100)))),
+         pop_size = factor(pop_size, levels = sort(unique(as.numeric(pop_size)))),
          reasoning = as.factor(reasoning))
 
 ### EDA ####
@@ -92,13 +100,10 @@ plot_groupsize <- ggplot(group_longdata, aes(x = time, y = group_size, color = r
   geom_smooth(aes(group = interaction(pop_size, reasoning)), method = "loess", fill = 'orange') +
   labs(y= "Group Size", x = "Time (s)", color = "Reasoning") +
   facet_wrap(~pop_size, scales = "free") +
-  theme_bw() +
-  theme(axis.title.x = element_text(size = 14),
-        axis.title.y = element_text(size = 14),
-        axis.text.x = element_text(size = 12),
-        axis.text.y = element_text(size = 12))
+  theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "group_size_plot.pdf"), plot = plot_groupsize, width = 8, height = 6, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "group_size_plot.pdf"), 
+       plot = plot_groupsize, width = 20, height = 15, units = "cm")
 
 ### Data analysis ####
 average_group_size <- group_longdata %>%
@@ -126,6 +131,7 @@ bartlett.test(mean_group_size ~ interaction(reasoning, pop_size), data = average
 # Run GLM with a log link to account for non-normality
 glm_group <- glm(mean_group_size ~ reasoning * pop_size, data = average_group_size, family = gaussian(link = "log"))
 summary(glm_group)
+
 # Standardized residuals
 residuals <- residuals(glm_group, type = "deviance")
 fitted_values <- fitted(glm_group)
@@ -165,7 +171,7 @@ emmeans_norm <- ggplot(pairwise_norm, aes(x = reasoning, y = normalized_emmean, 
                   fill = pop_size), alpha = 0.1, color = NA) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_group_size_norm"), plot = emmeans_norm, width = 8, height = 6, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_group_size.pdf"), plot = emmeans_norm, width = 10, height = 8, units = "cm")
 
 ## Area ####
 # Convert into long format
@@ -174,7 +180,7 @@ area_longdata <- area_data %>%
                names_to = "time",
                values_to = "area_size") %>%
   mutate(time = as.numeric(gsub("t", "", time)),
-         pop_size = factor(pop_size, levels = unique(as.character(sort(as.numeric(pop_size))))),
+         pop_size = factor(pop_size, levels = sort(unique(as.numeric(pop_size)))),
          reasoning = as.factor(reasoning))
 
 area_longdata <- area_longdata %>%
@@ -186,8 +192,8 @@ area_longdata <- area_longdata %>%
 ggplot(area_longdata, aes(x = time, y = area_size, color = pop_size)) +
   geom_point(size = 0.5, alpha = 0.8) +
   labs(y= "Area Size", x = "Time (s)", color = "Population Size") +
-  facet_wrap(~pop_size)
-  theme_bw() +
+  facet_wrap(~pop_size) +
+  theme_bw()
 
 ggplot(area_longdata, aes(x = time, y = area_size, color = pop_size)) +
   geom_line(aes(group = interaction(uname, pop_size, reasoning)), alpha = 0.7) +
@@ -199,13 +205,9 @@ plot_area <- ggplot(area_longdata, aes(x = time, y = area_scaled, color = reason
   geom_smooth(aes(group = interaction(pop_size, reasoning)), method = "loess", fill = 'orange') +
   facet_wrap(~pop_size) +
   labs(y= "Area Size", x = "Time (s)") +
-  theme_bw() +
-  theme(axis.title.x = element_text(size = 14),
-        axis.title.y = element_text(size = 14),
-        axis.text.x = element_text(size = 12),
-        axis.text.y = element_text(size = 12))
+  theme_bw() 
 
-ggsave(file.path(file.path(directory_path, "Figures"), "area_size_plot.pdf"), plot = plot_area, width = 8, height = 6, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "area_size_plot.pdf"), plot = plot_area, width = 10, height = 8, units = "cm")
 
 ### Data analysis ####
 average_area_size <- area_longdata %>%
@@ -245,7 +247,6 @@ plot(fitted_glm, residuals_glm,
      xlab = "Fitted Values", ylab = "Residuals")
 abline(h = 0, col = "red")
 
-
 emmeans(glm_area, ~ reasoning | pop_size)
 emmeans_area_df <- as.data.frame(emmeans(glm_area, ~ reasoning | pop_size))
 
@@ -265,4 +266,4 @@ emmeans_area_norm <- ggplot(pairwise_norm_area, aes(x = reasoning, y = normalize
                   fill = pop_size), alpha = 0.05, color = NA) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans_area_norm, width = 8, height = 6, units = "cm")
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), plot = emmeans_area_norm, width = 10, height = 8, units = "cm")
