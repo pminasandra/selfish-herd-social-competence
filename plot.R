@@ -13,6 +13,7 @@ renv::restore()
 # Libraries:
 library(tidyverse)
 library(here)
+library(mgcv)
 library(emmeans)
 
 # Data loading and processing ####
@@ -119,58 +120,68 @@ ggplot(average_group_size, aes(x = time, y = mean_group_size, color = pop_size))
   labs(y= "Mean Group Size", x = "Time (s)", color = "Population Size") +
   theme_bw()
 
-# Run a two-way ANOVA, pairwise comparison and plot emmeans
-anova_group <- aov(mean_group_size ~ reasoning * pop_size, data = average_group_size)
-summary(anova_group)
-
-# Residual diagnostics for Group Data ANOVA
-residuals_group <- residuals(anova_group)
-shapiro.test(residuals_group)
-bartlett.test(mean_group_size ~ interaction(reasoning, pop_size), data = average_group_size)
-
-# Run GLM with a log link to account for non-normality
-glm_group <- glm(mean_group_size ~ reasoning * pop_size, data = average_group_size, family = gaussian(link = "log"))
-summary(glm_group)
-
-# Standardized residuals
-residuals <- residuals(glm_group, type = "deviance")
-fitted_values <- fitted(glm_group)
-
-# Plot residuals vs. fitted values
-plot(fitted_values, residuals, main = "Residuals vs. Fitted Values", 
-     xlab = "Fitted Values", ylab = "Residuals")
-abline(h = 0, col = "red")
-
-# Run a Gamma GLM with a log link to handle non-normal, positive data
-gamma_group <- glm(mean_group_size ~ reasoning * pop_size, 
+gam_group <- gam(mean_group_size ~ reasoning + pop_size + s(time, bs = "cs"), 
                  family = Gamma(link = "log"), 
                  data = average_group_size)
-summary(gamma_group)
-residuals_gamma <- residuals(gamma_group, type = "deviance")
-plot(fitted(gamma_group), residuals_gamma, 
-     main = "Residuals vs Fitted (Gamma GLM)", 
-     xlab = "Fitted Values", ylab = "Residuals")
-abline(h = 0, col = "red")
+summary(gam_group)
+plot(gam_group, residuals = TRUE, pch = 16, cex = 0.5)
+
+gam_group_interaction <- gam(mean_group_size ~ reasoning + s(time, by = pop_size, bs = "cs") + pop_size, 
+                             family = Gamma(link = "log"), 
+                             data = average_group_size)
+plot(gam_group_interaction, residuals = TRUE, pch = 16, cex = 0.5)
+
+# Add predictions and confidence intervals
+average_group_size$pop_size <- factor(average_group_size$pop_size)
+newdata$pop_size <- factor(newdata$pop_size, levels = levels(average_group_size$pop_size))
+
+newdata <- expand.grid(time = seq(0, 500, by = 10),
+                       reasoning = unique(average_group_size$reasoning),
+                       pop_size = unique(average_group_size$pop_size))
+
+# Generate predictions and confidence intervals
+predictions <- predict(gam_group_interaction, newdata = newdata, se.fit = TRUE, type = "response")
+
+# Add predictions to the newdata
+newdata$fit <- predictions$fit
+newdata$lower <- predictions$fit - 1.96 * predictions$se.fit
+newdata$upper <- predictions$fit + 1.96 * predictions$se.fit
+
+ggplot(newdata, aes(x = time, y = fit, color = reasoning, group = reasoning)) +
+  geom_line(linewidth = 1) + 
+  # geom_ribbon(aes(ymin = lower, ymax = upper, fill = reasoning), alpha = 0.2) + 
+  facet_wrap(~pop_size, scales = "free") +  # Facet by population size
+  labs(y = "Predicted Group Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
+  theme_bw()
 
 # Get estimated marginal means
-emmeans_group <- emmeans(gamma_group, ~ reasoning | pop_size)
+emmeans_group <- emmeans(gam_group_interaction, ~ reasoning | pop_size + time, 
+                         at = list(time = time_points))
+pairwise_norm <- as.data.frame(emmeans_group) 
 
-# Normalize the emmean values relative to D0 for each population size
-pairwise_norm <- as.data.frame(emmeans_group) %>%
+ggplot(emmeans_df, aes(x = time, y = emmean, color = reasoning, group = reasoning)) +
+  geom_line(size = 1) + geom_point(size = 2) +
+  #geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = reasoning), alpha = 0.2) + 
+  facet_wrap(~ pop_size, scales = "free") +  # Facet by population size
+  labs(y = "Estimated Marginal Mean Group Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
+  theme_bw()
+
+emmeans_gam_avg <- emmeans(gam_group_interaction, ~ reasoning | pop_size)
+
+# Normalize EMMeans as before
+pairwise_norm_avg <- as.data.frame(emmeans_gam_avg) %>%
   group_by(pop_size) %>%
   mutate(normalized_emmean = emmean / emmean[reasoning == "d0"],
          normalized_lower.CL = lower.CL / emmean[reasoning == "d0"],
          normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
 
-# Create the plot with normalized values
-emmeans_norm <- ggplot(pairwise_norm, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
+# Plot normalized EMMeans
+ggplot(pairwise_norm_avg, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
   geom_line(linewidth = 1) + geom_point(size = 1.5) +
   geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.5) + 
-  labs(y= "Normalized EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
-  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, 
-                  fill = pop_size), alpha = 0.1, color = NA) +
-  theme_bw()
-
+  labs(y = "Normalized EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
+  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, fill = pop_size), alpha = 0.1, color = NA) + theme_bw()
+                  
 ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_group_size.pdf"), 
        plot = emmeans_norm, width = 20, height = 15, units = "cm")
 
@@ -268,5 +279,5 @@ emmeans_area_norm <- ggplot(pairwise_norm_area, aes(x = reasoning, y = normalize
                   fill = pop_size), alpha = 0.05, color = NA) +
   theme_bw()
 
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans.pdf"), 
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_area.pdf"), 
        plot = emmeans_area_norm, width = 20, height = 15, units = "cm")
