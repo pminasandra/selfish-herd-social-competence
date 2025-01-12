@@ -70,9 +70,6 @@ area_data <- load_and_process_data(
   relocate(pop_size, .after = uname) %>%
   relocate(reasoning, .after = pop_size)
 
-## Optional, save csv file
-#write.csv(group_data, "group_data.csv", row.names = FALSE)
-
 ## Group Size ####
 
 # Convert into long format
@@ -129,12 +126,11 @@ plot(gam_group, residuals = TRUE, pch = 16, cex = 0.5)
 gam_group_interaction <- gam(mean_group_size ~ reasoning + s(time, by = pop_size, bs = "cs") + pop_size, 
                              family = Gamma(link = "log"), 
                              data = average_group_size)
+summary(gam_group_interaction)
 plot(gam_group_interaction, residuals = TRUE, pch = 16, cex = 0.5)
 
 # Add predictions and confidence intervals
 average_group_size$pop_size <- factor(average_group_size$pop_size)
-newdata$pop_size <- factor(newdata$pop_size, levels = levels(average_group_size$pop_size))
-
 newdata <- expand.grid(time = seq(0, 500, by = 10),
                        reasoning = unique(average_group_size$reasoning),
                        pop_size = unique(average_group_size$pop_size))
@@ -146,22 +142,38 @@ predictions <- predict(gam_group_interaction, newdata = newdata, se.fit = TRUE, 
 newdata$fit <- predictions$fit
 newdata$lower <- predictions$fit - 1.96 * predictions$se.fit
 newdata$upper <- predictions$fit + 1.96 * predictions$se.fit
+newdata$pop_size <- factor(newdata$pop_size, levels = levels(average_group_size$pop_size))
+
 
 ggplot(newdata, aes(x = time, y = fit, color = reasoning, group = reasoning)) +
   geom_line(linewidth = 1) + 
   # geom_ribbon(aes(ymin = lower, ymax = upper, fill = reasoning), alpha = 0.2) + 
-  facet_wrap(~pop_size, scales = "free") +  # Facet by population size
+  facet_wrap(~pop_size, scales = "free") +
   labs(y = "Predicted Group Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
   theme_bw()
 
+# Compute derivatives for the smooth term and plot
+derivatives <- derivatives(gam_group_interaction, select = "time", interval = "confidence", partial_match = TRUE)
+
+ggplot(derivatives, aes(x = time, y = .derivative, color = pop_size, group = pop_size)) +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  # Highlight zero derivative
+  labs(x = "Time (s)", y = "Derivatives of Group Size by Time", color = "Population Size") +
+  theme_bw() +
+  facet_wrap(~pop_size)
+
 # Get estimated marginal means
+time_points <- seq(0, 500, by = 50)
 emmeans_group <- emmeans(gam_group_interaction, ~ reasoning | pop_size + time, 
                          at = list(time = time_points))
-pairwise_norm <- as.data.frame(emmeans_group) 
 
+# Convert EMMeans to a data frame
+emmeans_df <- as.data.frame(emmeans_group)
+
+# Plot EMMeans across time
 ggplot(emmeans_df, aes(x = time, y = emmean, color = reasoning, group = reasoning)) +
   geom_line(size = 1) + geom_point(size = 2) +
-  #geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = reasoning), alpha = 0.2) + 
+  geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = reasoning), alpha = 0.2) + 
   facet_wrap(~ pop_size, scales = "free") +  # Facet by population size
   labs(y = "Estimated Marginal Mean Group Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
   theme_bw()
@@ -176,7 +188,7 @@ pairwise_norm_avg <- as.data.frame(emmeans_gam_avg) %>%
          normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
 
 # Plot normalized EMMeans
-ggplot(pairwise_norm_avg, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
+emmeans_norm <- ggplot(pairwise_norm_avg, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
   geom_line(linewidth = 1) + geom_point(size = 1.5) +
   geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.5) + 
   labs(y = "Normalized EMMean Group Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
@@ -236,32 +248,88 @@ ggplot(average_area_size, aes(x = time, y = mean_area_size, color = pop_size)) +
   labs(y= "Mean Area Size", x = "Time (s)", color = "Population Size") +
   theme_bw()
 
-# Run a two-way ANOVA, pairwise comparison and plot emmeans
-anova_area <- aov(mean_area_size ~ reasoning * pop_size, data = average_area_size)
-summary(anova_area)
+gam_area <- gam(mean_area_size ~ reasoning + pop_size + s(time, bs = "cs"), 
+    family = Gamma(link = "log"), 
+    data = average_area_size)
+summary(gam_area)
+plot(gam_area, residuals = TRUE, pch = 16, cex = 0.5)
 
-# Residual diagnostics for Group Data ANOVA
-residuals_area <- residuals(anova_area)
-shapiro.test(residuals_area)
-bartlett.test(mean_area_size ~ interaction(reasoning, pop_size), data = average_area_size)
+gam_area_interaction <- gam(mean_area_size ~ reasoning + s(time, by = pop_size, bs = "cs") + pop_size, 
+                             family = Gamma(link = "log"), 
+                             data = average_area_size)
+summary(gam_area_interaction)
+plot(gam_area_interaction, residuals = TRUE, pch = 16, cex = 0.5)
 
-glm_area <- glm(mean_area_size ~ reasoning * pop_size, 
-                data = average_area_size, 
-                family = gaussian(link = "log"))
-summary(glm_area)
+# Add predictions and confidence intervals
+average_area_size$pop_size <- factor(average_area_size$pop_size)
 
-# Residual diagnostics for Gaussian GLM
-# Plot residuals vs fitted values to check for patterns or heteroscedasticity
-residuals_glm <- residuals(glm_area, type = "deviance")
-fitted_glm <- fitted(glm_area)
+# Create a grid for predictions
+prediction_grid_area <- expand.grid(time = seq(0, 500, by = 10),
+                                    reasoning = unique(average_area_size$reasoning),
+                                    pop_size = unique(average_area_size$pop_size))
 
-plot(fitted_glm, residuals_glm, 
-     main = "Residuals vs. Fitted (Gaussian GLM - Area)", 
-     xlab = "Fitted Values", ylab = "Residuals")
-abline(h = 0, col = "red")
+# Generate predictions and confidence intervals
+predictions <- predict(gam_area_interaction, newdata = prediction_grid_area, se.fit = TRUE, type = "response")
 
-emmeans(glm_area, ~ reasoning | pop_size)
-emmeans_area_df <- as.data.frame(emmeans(glm_area, ~ reasoning | pop_size))
+# Add predictions to the grid
+prediction_grid_area$fit <- predictions$fit
+prediction_grid_area$lower <- predictions$fit - 1.96 * predictions$se.fit
+prediction_grid_area$upper <- predictions$fit + 1.96 * predictions$se.fit
+prediction_grid_area$pop_size <- factor(prediction_grid_area$pop_size, levels = levels(average_area_size$pop_size))
+
+# Plot predicted values from GAM interaction model
+ggplot(prediction_grid_area, aes(x = time, y = fit, color = reasoning, group = reasoning)) +
+  geom_line(linewidth = 1) + 
+  # geom_ribbon(aes(ymin = lower, ymax = upper, fill = reasoning), alpha = 0.2) + 
+  facet_wrap(~pop_size, scales = "free") +
+  labs(y = "Predicted Area Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
+  theme_bw()
+
+# Compute derivatives for the smooth term and plot
+derivatives_area <- derivatives(gam_area_interaction, select = "time", interval = "confidence", partial_match = TRUE)
+
+ggplot(derivatives_area, aes(x = time, y = .derivative, color = pop_size, group = pop_size)) +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  # Highlight zero derivative
+  labs(x = "Time (s)", y = "Derivatives of Area Size by Time", color = "Population Size") +
+  theme_bw() +
+  facet_wrap(~pop_size)
+
+# Get estimated marginal means
+time_points <- seq(0, 500, by = 50)
+emmeans_area <- emmeans(gam_area_interaction, ~ reasoning | pop_size + time, 
+                        at = list(time = time_points))
+
+# Convert EMMeans to a data frame
+emmeans_area_df <- as.data.frame(emmeans_area)
+
+# Plot EMMeans across time
+ggplot(emmeans_area_df, aes(x = time, y = emmean, color = reasoning, group = reasoning)) +
+  geom_line(size = 1) + geom_point(size = 2) +
+  geom_ribbon(aes(ymin = lower.CL, ymax = upper.CL, fill = reasoning), alpha = 0.2) + 
+  facet_wrap(~ pop_size, scales = "free") +  # Facet by population size
+  labs(y = "Estimated Marginal Mean Area Size", x = "Time (s)", color = "Reasoning", fill = "Reasoning") +
+  theme_bw()
+
+emmeans_area_avg <- emmeans(gam_area_interaction, ~ reasoning | pop_size)
+
+# Normalize EMMeans as before
+pairwise_norm_area_avg <- as.data.frame(emmeans_area_avg) %>%
+  group_by(pop_size) %>%
+  mutate(normalized_emmean = emmean / emmean[reasoning == "d0"],
+         normalized_lower.CL = lower.CL / emmean[reasoning == "d0"],
+         normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
+
+# Plot normalized EMMeans
+emmeans_area_norm <- ggplot(pairwise_norm_area_avg, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
+  geom_line(linewidth = 1) + geom_point(size = 1.5) +
+  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.5) + 
+  labs(y = "Normalized EMMean Area Size", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
+  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, fill = pop_size), alpha = 0.1, color = NA) + theme_bw()
+
+# Save the plot
+ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_area_size.pdf"), 
+       plot = emmeans_area_norm, width = 20, height = 15, units = "cm")
 
 # Normalize the EMMeans relative to reasoning = d0
 pairwise_norm_area <- emmeans_area_df %>%
