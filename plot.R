@@ -131,7 +131,7 @@ plot(gam_group_interaction, residuals = TRUE, pch = 16, cex = 0.5)
 
 # Add predictions and confidence intervals
 average_group_size$pop_size <- factor(average_group_size$pop_size)
-newdata <- expand.grid(time = seq(0, 500, by = 10),
+newdata <- expand.grid(time = seq(0, 500, by = 1),
                        reasoning = unique(average_group_size$reasoning),
                        pop_size = unique(average_group_size$pop_size))
 
@@ -144,7 +144,6 @@ newdata$lower <- predictions$fit - 1.96 * predictions$se.fit
 newdata$upper <- predictions$fit + 1.96 * predictions$se.fit
 newdata$pop_size <- factor(newdata$pop_size, levels = levels(average_group_size$pop_size))
 
-
 ggplot(newdata, aes(x = time, y = fit, color = reasoning, group = reasoning)) +
   geom_line(linewidth = 1) + 
   # geom_ribbon(aes(ymin = lower, ymax = upper, fill = reasoning), alpha = 0.2) + 
@@ -153,14 +152,30 @@ ggplot(newdata, aes(x = time, y = fit, color = reasoning, group = reasoning)) +
   theme_bw()
 
 # Compute derivatives for the smooth term and plot
-derivatives <- derivatives(gam_group_interaction, select = "time", interval = "confidence", partial_match = TRUE)
+derivatives <- derivatives(gam_group_interaction, 
+                           select = "time", interval = "confidence", partial_match = TRUE,
+                           data = expand_grid(time = seq(0,500, by = 1),
+                                              pop_size = unique(average_group_size$pop_size),
+                                              reasoning = unique(average_group_size$reasoning)))
 
 ggplot(derivatives, aes(x = time, y = .derivative, color = pop_size, group = pop_size)) +
   geom_line(size = 1) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  # Highlight zero derivative
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   labs(x = "Time (s)", y = "Derivatives of Group Size by Time", color = "Population Size") +
   theme_bw() +
   facet_wrap(~pop_size)
+
+# Filter for near-zero derivatives
+inflection_points <- derivatives %>%
+  filter(abs(.derivative) < 0.005) %>%
+  group_by(pop_size) %>%
+  summarize(inflection_time = min(time))
+
+ggplot(inflection_points, aes(x = pop_size, y = inflection_time)) +
+  geom_point(size = 3) +
+  geom_line(group = 1, color = "blue") +
+  labs(x = "Population Size", y = "Inflection Time (s)") +
+  theme_bw()
 
 # Get estimated marginal means
 time_points <- seq(0, 500, by = 50)
@@ -295,8 +310,21 @@ ggplot(derivatives_area, aes(x = time, y = .derivative, color = pop_size, group 
   theme_bw() +
   facet_wrap(~pop_size)
 
+# Filter for near-zero derivatives
+inflection_area <- derivatives_area %>%
+  filter(abs(.derivative) < 0.01) %>%
+  group_by(pop_size) %>%
+  summarize(inflection_time = min(time))
+
+ggplot(inflection_area, aes(x = pop_size, y = inflection_time)) +
+  geom_point(size = 3) +
+  geom_line(group = 1, color = "blue") +
+  labs(
+    x = "Population Size", 
+    y = "Inflection Time (s)") +
+  theme_bw()
+
 # Get estimated marginal means
-time_points <- seq(0, 500, by = 50)
 emmeans_area <- emmeans(gam_area_interaction, ~ reasoning | pop_size + time, 
                         at = list(time = time_points))
 
