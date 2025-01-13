@@ -15,6 +15,7 @@ library(tidyverse)
 library(here)
 library(mgcv)
 library(emmeans)
+library(gratia)
 
 # Data loading and processing ####
 
