@@ -359,22 +359,3 @@ emmeans_area_norm <- ggplot(pairwise_norm_area_avg, aes(x = reasoning, y = norma
 # Save the plot
 ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_area_size.pdf"), 
        plot = emmeans_area_norm, width = 20, height = 15, units = "cm")
-
-# Normalize the EMMeans relative to reasoning = d0
-pairwise_norm_area <- emmeans_area_df %>%
-  group_by(pop_size) %>%
-  mutate(normalized_emmean = emmean / emmean[reasoning == "d0"],
-    normalized_lower.CL = lower.CL / emmean[reasoning == "d0"],
-    normalized_upper.CL = upper.CL / emmean[reasoning == "d0"])
-
-# Create the plot with normalized values
-emmeans_area_norm <- ggplot(pairwise_norm_area, aes(x = reasoning, y = normalized_emmean, color = pop_size, group = pop_size)) +
-  geom_line(linewidth = 1.5) + geom_point(size = 2) +
-  geom_hline(yintercept = 1, color = "grey", linetype = "dashed", linewidth = 0.8) + # Add horizontal grey line
-  labs(y= "Normalized EMMean Area", x = "Depth of Reasoning", color = "Population Size", fill = "Population Size") +
-  geom_ribbon(aes(ymin = normalized_lower.CL, ymax = normalized_upper.CL, 
-                  fill = pop_size), alpha = 0.05, color = NA) +
-  theme_bw()
-
-ggsave(file.path(file.path(directory_path, "Figures"), "emmeans_area.pdf"), 
-       plot = emmeans_area_norm, width = 20, height = 15, units = "cm")
