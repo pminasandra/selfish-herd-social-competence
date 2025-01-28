@@ -110,6 +110,17 @@ def gen_row_of_g_areas(positions, timerange):
 
     return all_areas_row
 
+def gen_row_of_g_area_vars(positions, timerange):
+    all_areas_row = []
+    for t in timerange:
+        data_sub = positions[:,:,t].copy()
+        vor = voronoi.get_bounded_voronoi(data_sub)
+        areas = voronoi.get_areas(data_sub, vor)
+
+        all_areas_row.append(np.var(areas))
+
+    return all_areas_row
+
 def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)
     rows = []
@@ -136,6 +147,18 @@ def make_area_csv_for(pop_size, depth, timerange, eps=0.005):
     df = pd.DataFrame(rows, columns=col_labels)
     return df
 
+def make_areavar_csv_for(pop_size, depth, timerange, eps=0.005):
+    all_files = _files_for(pop_size, depth)
+    rows = []
+    for file_ in all_files:
+        data = _read_data(file_)
+        uname = "-".join(file_[:-len(".pkl")].split("-")[2:])
+        rows.append([uname] + gen_row_of_g_area_vars(data, timerange))
+
+    col_labels =["uname"] + [f"t{time}" for time in timerange]
+
+    df = pd.DataFrame(rows, columns=col_labels)
+    return df
 
 if __name__ == "__main__":
     group_metrics = []
@@ -147,6 +170,6 @@ if __name__ == "__main__":
     for pop_size in config.ANALYSE_POP_SIZES:
         for depth in config.ANALYSE_DEPTHS:
             tgt_file = joinpath(config.DATA, "Results",
-                                    f"{pop_size}-d{depth}.csv")
-            data = make_tgs_csv_for(pop_size, depth, timerange, eps=0.02)
+                                    f"var-area-{pop_size}-d{depth}.csv")
+            data = make_areavar_csv_for(pop_size, depth, timerange, eps=0.02)
             data.to_csv(tgt_file, index=False)
