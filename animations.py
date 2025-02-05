@@ -8,9 +8,11 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import numpy as np
 
 import config
 import measurements
+import voronoi
 
 matplotlib.use("TkAgg")
 
@@ -25,7 +27,7 @@ def animate_data(datasets, tmin=0, tmax=None, delay=None):
     scs = []
     locs = []
     for data in datasets:
-        loc = data[:,:,0]
+        loc = data[:,:,tmin]
         locs.append(loc)
         scs.append(ax.scatter(loc[:,0], loc[:,1], s=0.3, alpha=0.6))
 
@@ -53,7 +55,48 @@ def animate_data(datasets, tmin=0, tmax=None, delay=None):
 
         return ax,
 
-    ani = FuncAnimation(fig, update, frames=tmax-tmin+int(delay*1000/50), interval=50, blit=False)
+    ani = FuncAnimation(fig, update,
+                            frames=tmax-tmin+int(delay*1000/50),
+                            interval=50,
+                            blit=False)
+    return ani
+
+def animate_area_hists(datasets, tmin=0, tmax=None, delay=None):
+
+    if tmax is None:
+        tmax = len(datasets[0])
+    fig, ax = plt.subplots(1, len(datasets), sharey=True, figsize=(4.0, 4.0), dpi=300)
+
+    hists = []
+    j = 0
+    for data in datasets:
+        print(len(np.log(data[0])))
+        hists.append(ax[j].hist(np.log(data[0])))
+        ax[j].set_xlim((-20, 0))
+        ax[j].set_ylim((0, 50))
+        j += 1
+
+    if delay is None:
+        delay = 0
+    def update(i):
+        if i <= delay*1000/50:
+            return ax,
+        print(i, end="\033[K\r")
+        for j in range(len(datasets)):
+            hists[j] = datasets[j][i - int(delay*1000/50)]
+
+        for hist_dat, a in zip(hists, ax):
+            a.cla()
+            a.hist(np.log(hist_dat))
+            a.set_xlim((-20, 0))
+            a.set_ylim((0, 50))
+
+        return ax,
+
+    ani = FuncAnimation(fig, update,
+                    frames=tmax-tmin+int(delay*1000/50), 
+                    interval=50, 
+                    blit=False)
     return ani
 
 def save_animation(anim, name):
@@ -62,13 +105,49 @@ def save_animation(anim, name):
 
     anim.save(joinpath(anim_dir, name), writer="ffmpeg")
 
-if __name__ == "__main__":
-    data = []
-    for i in [0, 1]:
-        tgt_file = measurements._files_for(75, i)
-        tgt_file = list(tgt_file)[50]
-        tgt_file = measurements._read_data(tgt_file)
-        data.append(tgt_file)
+def _extract_areas(dataset):
 
-    anim = animate_data(data, tmax=100, delay=1)
-    save_animation(anim, f"movement_75.gif")
+    areas = []
+    _, _, k = dataset.shape
+    for i in range(k):
+        dataslice = dataset[:,:,i]
+        vor = voronoi.get_bounded_voronoi(dataslice)
+        areasslice = voronoi.get_areas(dataslice, vor)
+        areas.append(areasslice)
+
+    return areas
+
+def _joinlists(lol1, lol2):
+    lol_res = []
+    for x, y in zip(lol1, lol2):
+        lol_res.append(x+y)
+
+    return lol_res
+
+if __name__ == "__main__":
+    area_datasets = [[], []]
+    for j in [10, 270, 34, 399, 30, 76]:
+        data = []
+        for i in [0, 1]:
+            tgt_file = measurements._files_for(75, i)
+            tgt_file = list(tgt_file)[j]
+            tgt_file = measurements._read_data(tgt_file)
+            data.append(tgt_file)
+
+        areas_data = []
+        for dataset in data:
+            areas_data.append(_extract_areas(dataset))
+
+        print(len(area_datasets[0]))
+        if area_datasets[0] == []:
+            area_datasets[0] = areas_data[0]
+            area_datasets[1] = areas_data[1]
+        else:
+# this joining is fully improper
+# plan this properly
+            area_datasets[0] = _joinlists(area_datasets[0], areas_data[0])
+            area_datasets[1] = _joinlists(area_datasets[1], areas_data[1])
+
+    print("Initiating animations")
+    anim = animate_area_hists(area_datasets, tmax=200, delay=0.5)
+    save_animation(anim, f"hist_75.gif")
