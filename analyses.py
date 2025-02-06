@@ -74,6 +74,6 @@ if __name__ == "__main__":
         ax.legend()
 #        ax.set_xscale('log')
 #        ax.set_yscale('log')
-        ax.set_ylabel("Across-individual variance in area")
+        ax.set_ylabel("Across-individual variance in log(area)")
 
         utilities.saveimg(fig, f"var-areasize-{popsize}")

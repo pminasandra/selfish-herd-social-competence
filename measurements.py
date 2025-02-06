@@ -117,7 +117,7 @@ def gen_row_of_g_area_vars(positions, timerange):
         vor = voronoi.get_bounded_voronoi(data_sub)
         areas = voronoi.get_areas(data_sub, vor)
 
-        all_areas_row.append(np.var(areas))
+        all_areas_row.append(np.var(np.log(areas)))
 
     return all_areas_row
 
