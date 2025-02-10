@@ -60,20 +60,10 @@ if __name__ == "__main__":
             llims = lims[1,:]
 
             trange_x = trange#[keep_only]
-#            model = linregress(trange_x, np.log(avg))
-#            lam = model.slope
-#            intc = np.exp(model.intercept)
-
-#            print(f"{popsize}, d{dval}\t\t{lam}, {intc}")
-#            ax.plot(trange_x, intc*np.exp(np.array(trange_x)*lam), linestyle='dotted',
-#                            color='black',
-#                            linewidth=0.3)
             ax.plot(trange_x, avg, label=f"d{dval}")
             ax.fill_between(trange_x, llims, ulims, alpha=0.1)
 
         ax.legend()
-#        ax.set_xscale('log')
-#        ax.set_yscale('log')
         ax.set_ylabel("Across-individual variance in log(area)")
 
         utilities.saveimg(fig, f"var-areasize-{popsize}")
