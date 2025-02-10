@@ -145,7 +145,7 @@ def recursive_reasoning(locations, vor, desired_depth,
     Returns:
         np.array, new locations, same shape as locations
     """
-    # desired_depth == 0 -> normal gradient descent
+# desired_depth == 0 -> normal gradient descent
     if desired_depth == 0:
         return everyone_do_grad_descent(locations, vor)
 
@@ -180,32 +180,33 @@ def recursive_reasoning(locations, vor, desired_depth,
 
 
 if __name__ == "__main__":
-    locs = np.random.uniform(size=(30, 2))
-    vor = voronoi.get_bounded_voronoi(locs)
-
-    fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
-    ax.set_xlim((-0.1, 1.1))
-    ax.set_ylim((-0.1, 1.1))
-    sc = ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
-
-    def update(i):
-        print(i, end="\033[K\r")
-        global locs
-        global vor
-        global sc
-        locs = recursive_reasoning(locs, vor, 2, locs)
+    quit()
+#    locs = np.random.uniform(size=(30, 2))
+#    vor = voronoi.get_bounded_voronoi(locs)
+#
+#    fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
+#    ax.set_xlim((-0.1, 1.1))
+#    ax.set_ylim((-0.1, 1.1))
+#    sc = ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
+#
+#    def update(i):
+#        print(i, end="\033[K\r")
+#        global locs
+#        global vor
+#        global sc
+#        locs = recursive_reasoning(locs, vor, 2, locs)
 #        vor = voronoi.get_bounded_voronoi(locs)
 #        voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_width=0.3, 
 #                        line_alpha=0.2, show_points=False)
-
-        sc.set_offsets(locs)
-        ax.set_xlim((-0.1, 1.1))
-        ax.set_ylim((-0.1, 1.1))
-        ax.axvline(0, linestyle="dotted", linewidth=0.3)
-        ax.axvline(1, linestyle="dotted", linewidth=0.3)
-        ax.axhline(0, linestyle="dotted", linewidth=0.3)
-        ax.axhline(1, linestyle="dotted", linewidth=0.3)
-
-    ani = FuncAnimation(fig, update, frames=200, interval=30)
-    plt.show()
-    ani.save("movement_d2.gif", writer="ffmpeg")
+#
+#        sc.set_offsets(locs)
+#        ax.set_xlim((-0.1, 1.1))
+#        ax.set_ylim((-0.1, 1.1))
+#        ax.axvline(0, linestyle="dotted", linewidth=0.3)
+#        ax.axvline(1, linestyle="dotted", linewidth=0.3)
+#        ax.axhline(0, linestyle="dotted", linewidth=0.3)
+#        ax.axhline(1, linestyle="dotted", linewidth=0.3)
+#
+#    ani = FuncAnimation(fig, update, frames=200, interval=30)
+#    plt.show()
+#    ani.save("movement_d2.gif", writer="ffmpeg")
