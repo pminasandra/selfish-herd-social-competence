@@ -139,7 +139,7 @@ def recursive_reasoning(locations, vor, desired_depth,
     Args:
         locations (np.array, n*2)
         vor (scipy.spatial.Voronoi object)
-        desired_depth (int): how many recursions animals will do.
+        desired_depth (int or array-like): how many recursions each animal will do.
         orig_locations (np.array, n*2): original locations without ANY
         modifications.
     Returns:
@@ -149,7 +149,10 @@ def recursive_reasoning(locations, vor, desired_depth,
     if desired_depth == 0:
         return everyone_do_grad_descent(locations, vor)
 
-    if desired_depth == curr_depth:
+    if isinstance(desired_depth, int):
+        desired_depth = np.ones(locations.shape[0])*desired_depth
+
+    if desired_depth.max() == curr_depth:
         return locations
     # first do one recursion
     new_locs = everyone_do_grad_descent(locations, vor)
@@ -157,19 +160,22 @@ def recursive_reasoning(locations, vor, desired_depth,
     for id_ in range(len(orig_locations)):
 # then ask if everyone else were in these new locations,
 # where should I go?
-        new_locs_with_me = new_locs.copy()
-        new_locs_with_me[id_] = orig_locations[id_]
+        if desired_depth[id_] < curr_depth:
+            new_updated_locs.append(locations[id_])
+        else:
+            new_locs_with_me = new_locs.copy()
+            new_locs_with_me[id_] = orig_locations[id_]
 
-        new_vor = voronoi.get_bounded_voronoi(new_locs_with_me)
-        areas_new = voronoi.get_areas(new_locs_with_me, new_vor)
-        my_movement = -capped_grad(id_, new_locs_with_me, new_vor, areas_new)*\
-                            config.GRAD_DESC_MULTPL_FACTOR
-        my_new_loc = new_locs_with_me[id_] + my_movement
-        my_new_loc[0] = max(0.01, my_new_loc[0])
-        my_new_loc[0] = min(0.99, my_new_loc[0])
-        my_new_loc[1] = max(0.01, my_new_loc[1])
-        my_new_loc[1] = min(0.99, my_new_loc[1])
-        new_updated_locs.append(my_new_loc)
+            new_vor = voronoi.get_bounded_voronoi(new_locs_with_me)
+            areas_new = voronoi.get_areas(new_locs_with_me, new_vor)
+            my_movement = -capped_grad(id_, new_locs_with_me, new_vor, areas_new)*\
+                                config.GRAD_DESC_MULTPL_FACTOR
+            my_new_loc = new_locs_with_me[id_] + my_movement
+            my_new_loc[0] = max(0.01, my_new_loc[0])
+            my_new_loc[0] = min(0.99, my_new_loc[0])
+            my_new_loc[1] = max(0.01, my_new_loc[1])
+            my_new_loc[1] = min(0.99, my_new_loc[1])
+            new_updated_locs.append(my_new_loc)
 
 # after everyone has asked this question, store their new
 # movement decisions. Recurse on these new choices.
