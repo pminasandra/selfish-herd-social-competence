@@ -72,6 +72,7 @@ if __name__ == "__main__":
 
         for popsize in config.POP_S_SMART_GUYS_HG:
             for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
+                print(f"Initialising hunger games for n={popsize}, smart={num_smart}.")
                 contests = hungergames.hungergames(popsize, 
                                                 num_smart,
                                                 config.NUM_REPEATS)
