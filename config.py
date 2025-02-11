@@ -1,4 +1,3 @@
-
 # Pranav Minasandra
 # pminasandra.github.io
 # December 09, 2024
@@ -30,9 +29,15 @@ POP_S_DOR = {
 75: [0, 1, 2, 3],
 87: [0, 1, 2, 3],
 100: [0, 1, 2, 3]
-} # These are the missing pairs of population size and depth of reasoning.
+} 
 NUM_REPEATS = 500
 TMAX = 500
+
+# Program flow for hungergames
+POP_S_SMART_GUYS_HG = {
+    25: [5, 10, 15, 20],
+    87: [5, 25, 45, 65]
+} # these are how many d1 individuals to have in each round
 
 # Data analysis
 ANALYSE_DATA = True
