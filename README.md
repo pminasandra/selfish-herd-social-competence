@@ -1,7 +1,7 @@
 
 # Thinking and Overthinking in Group Formation
-This project was carried out by [Pranav Minasandra](pminasandra.github.io) and
-[Cecilia Baldoni](cecibaldoni.github.io) in December 2024.
+This project was carried out by [Pranav Minasandra](https://pminasandra.github.io) and
+[Cecilia Baldoni](https://cecibaldoni.github.io) in December 2024.
 
 ![an animation of a selfish herd](.assets/selfish-herd-banner.gif)
 
