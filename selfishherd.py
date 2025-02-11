@@ -19,7 +19,7 @@ class SelfishHerd:
     """
     Args:
         n (int): number of selfish agents
-        depth_of_reasoning (int): how deep they should anticipate others'
+        depth_of_reasoning (int or array-like): how deep they should anticipate others'
                     behaviours.
         init_locs (np.array, n*2): initial_locations of agents.
     """

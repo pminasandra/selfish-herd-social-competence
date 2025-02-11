@@ -4,4 +4,6 @@
 - [x] make classes SelfishAgent and SelfishHerd
 - [x] implement recursive reasoning for social competence
 - [x] DBSCAN for detection of groups
-- [ ] make ggplots for appropriate metrics
+- [x] make ggplots for appropriate metrics
+- [ ] generalise movement code for more broad mixtures of d_is
+- [ ] write structural code to run hunger games for n=25 and n=87

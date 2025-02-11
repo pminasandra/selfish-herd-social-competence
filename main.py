@@ -13,8 +13,9 @@ import uuid
 import numpy as np
 
 import config
-import selfishherd
+import hungergames
 import measurements
+import selfishherd
 
 def runmodel(herd, filename):
     """
@@ -65,6 +66,20 @@ if __name__ == "__main__":
                 pool.close()
                 pool.join()
             print()
+
+    if config.CONDUCT_HUNGERGAMES:
+        os.makedirs(joinpath(config.DATA, "HungerGames"), exist_ok=True)
+
+        for popsize in config.POP_S_SMART_GUYS_HG:
+            for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
+                contests = hungergames.hungergames(popsize, 
+                                                num_smart,
+                                                config.NUM_REPEATS)
+                pool = mp.Pool()
+                pool.starmap(runmodel, contests)
+                pool.close()
+                pool.join()
+
 
     if config.ANALYSE_DATA:
         group_metrics = []
