@@ -145,12 +145,12 @@ def recursive_reasoning(locations, vor, desired_depth,
     Returns:
         np.array, new locations, same shape as locations
     """
+    if isinstance(desired_depth, int):
+        desired_depth = np.ones(locations.shape[0])*desired_depth
+
 # desired_depth == 0 -> normal gradient descent
     if desired_depth.max() == 0:
         return everyone_do_grad_descent(locations, vor)
-
-    if isinstance(desired_depth, int):
-        desired_depth = np.ones(locations.shape[0])*desired_depth
 
     if desired_depth.max() == curr_depth:
         return locations
