@@ -45,7 +45,7 @@ POP_S_SMART_GUYS_HG = {
     87: [5, 25, 45, 65]
 } # these are how many d1 individuals to have in each round
 
-HUNGERGAMES_TIME_LIMS = (150, 250)
+HUNGERGAMES_TIME_LIMS = (250, 350)
 
 # Data analysis
 ANALYSE_POP_SIZES = [10, 25, 35, 50, 75, 87, 100]

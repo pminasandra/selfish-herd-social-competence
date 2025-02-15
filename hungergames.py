@@ -7,6 +7,7 @@ from os.path import join as joinpath
 import pickle
 import uuid
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 import config
@@ -70,17 +71,17 @@ def _read_hungergames_data(filename):
 # following analyses will be done after initial randomness
 # let's say we will look at t=150 to t=250
 
-def extract_groupsizes(dataset, num_smart):
+def extract_groupsizes(dataset, rel_indices):
     """
-    For a given dataset containing d_0 and d_1 individuals,  returns TGS
-    for d_0 and d_1 individuals separately.
+    For a given dataset containing focal and nonfocal individuals,  returns TGS
+    for focal and nonfocal individuals separately.
 
     Args:
         dataset (array-like, n×2×t): location data across time.
-        num_smart (int): starting from index 0, how many d_1 individuals.
+        rel_indices (array-like): indices of focal individuals
 
     Returns:
-        np.array: (tgs_d_0, tgs_d_1)
+        tuple of floats: (tgs_nonfocal, tgs_focal)
     """
     dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
                             config.HUNGERGAMES_TIME_LIMS[1]]
@@ -88,6 +89,8 @@ def extract_groupsizes(dataset, num_smart):
 
     ttotal = dataset.shape[2]
     values_across_time = []
+    non_indices = list(range(dataset.shape[0]))
+    non_indices = [j for j in non_indices if j not in rel_indices]
     for t in range(0, ttotal, 20):
         data_sub = dataset[:,:,t]
         group_ids = measurements.dbscan(data_sub)
@@ -102,8 +105,8 @@ def extract_groupsizes(dataset, num_smart):
 
             group_sizes_per_ind[group_ids == group] = size
 
-        mean_d0 = group_sizes_per_ind[num_smart:].mean()
-        mean_d1 = group_sizes_per_ind[:num_smart].mean()
+        mean_d0 = group_sizes_per_ind[non_indices].mean()
+        mean_d1 = group_sizes_per_ind[rel_indices].mean()
 
         values_across_time.append([mean_d0, mean_d1])
 
@@ -111,7 +114,6 @@ def extract_groupsizes(dataset, num_smart):
 
     results =  values_across_time.mean(axis=0)
     return results[0], results[1]
-
 
 def extract_areas(dataset, num_smart):
     """
@@ -123,7 +125,7 @@ def extract_areas(dataset, num_smart):
         num_smart (int): starting from index 0, how many d_1 individuals.
 
     Returns:
-        np.array: (area_d_0, area_d_1)
+        tuple of floats: (area_d_0, area_d_1)
     """
     dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
                             config.HUNGERGAMES_TIME_LIMS[1]]
@@ -131,13 +133,15 @@ def extract_areas(dataset, num_smart):
 
     ttotal = dataset.shape[2]
     values_across_time = []
+    non_indices = list(range(dataset.shape[0]))
+    non_indices = [j for j in non_indices if j not in rel_indices]
     for t in range(0, ttotal, 20):
         data_sub = dataset[:,:,t]
         vor = voronoi.get_bounded_voronoi(data_sub)
         areas = voronoi.get_areas(data_sub, vor)
 
-        area_d0 = np.log(areas[num_smart:]).mean()
-        area_d1 = np.log(areas[:num_smart]).mean()
+        area_d0 = np.log(areas[non_indices]).mean()
+        area_d1 = np.log(areas[rel_indices]).mean()
         values_across_time.append([area_d0, area_d1])
 
     values_across_time = np.array(values_across_time)
@@ -145,6 +149,47 @@ def extract_areas(dataset, num_smart):
     results =  values_across_time.mean(axis=0)
     return results[0], results[1]
 
+def compute_metric(all_datasets, rel_indices, metricfunc):
+    """
+    For a given metric func (of the type of extract_areas and
+    extract_groupsizes), computes the function for all available data
+    and computes a metric for the hypothesis that focals > nonfocals.
+    Args:
+        all_datasets (list)
+        rel_indices (list): list of indices of focal individuals
+        metricfunc (func): extract_groupsizes or extract_areas
+    Returns:
+        fraction of dataset cases where focal > nonfocal
+    """
+    metricbases = [metricfunc(data, rel_indices)\
+                    for data in all_datasets]
+    metricdiff = metricbases[:,1] - metricbases[:,0]
+    return sum(metricdiff>0)/len(metricdiff)
+
+def permutation(all_datasets, rel_indices, metricfunc):
+    """
+    For a given metric func (of the type of extract_areas and
+    extract_groupsizes), computes the function for all available data
+    and performs one permutation using non-focal individuals.
+    Args:
+        all_datasets (list)
+        rel_indices (list): list of indices of focal individuals
+        metricfunc (func): extract_groupsizes or extract_areas
+    """
+    
+    avail_indices = list(range(all_datasets[0].shape[0]))
+    avail_indices = [j for j in avail_indices if j not in rel_indices]
+
+    fake_indices = np.random.choice(avail_indices, len(rel_indices),
+                        replace=False)
+    return compute_metric(all_datasets, fake_indices, metricfunc)
+
+def permutations(all_datasets, rel_indices, metricfunc, num_perms=10_000):
+    """
+    *GENERATOR* on permutations
+    """
+    for i in range(num_perms):
+        yield permutation(all_datasets, rel_indices, metricfunc)
 
 def extract_all_data():
     """
@@ -165,7 +210,9 @@ def extract_all_data():
             gsizes = np.array(gsizes)
             areas = np.array(areas)
 
-            print(popsize, num_smart, "\n", areas[:,0]-areas[:,1])
+            print(popsize, num_smart)
+            areadiff = areas[:,0] - areas[:,1]
+            print(sum(areadiff>0)/len(areadiff))
         print()
 
 extract_all_data()
