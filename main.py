@@ -81,6 +81,9 @@ if __name__ == "__main__":
                 pool.close()
                 pool.join()
 
+    if config.ANALYSE_HUNGERGAMES:
+        hungergames.run_data_analysis()
+
 
     if config.ANALYSE_DATA:
         group_metrics = []

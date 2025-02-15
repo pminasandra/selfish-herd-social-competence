@@ -115,7 +115,7 @@ def extract_groupsizes(dataset, rel_indices):
     results =  values_across_time.mean(axis=0)
     return results[0], results[1]
 
-def extract_areas(dataset, num_smart):
+def extract_areas(dataset, rel_indices):
     """
     For a given dataset containing d_0 and d_1 individuals,  returns mean Voronoi areas
     for d_0 and d_1 individuals separately.
@@ -140,8 +140,11 @@ def extract_areas(dataset, num_smart):
         vor = voronoi.get_bounded_voronoi(data_sub)
         areas = voronoi.get_areas(data_sub, vor)
 
-        area_d0 = np.log(areas[non_indices]).mean()
-        area_d1 = np.log(areas[rel_indices]).mean()
+        area_d0 = -np.log(areas[non_indices]).mean()
+        area_d1 = -np.log(areas[rel_indices]).mean()
+        # NOTE: -np.log is chosen because hypothesis testing
+        # functions below test for focal > non-focal, whereas 
+        # area_focal < area_non-focal is our hypothesis.
         values_across_time.append([area_d0, area_d1])
 
     values_across_time = np.array(values_across_time)
@@ -163,6 +166,7 @@ def compute_metric(all_datasets, rel_indices, metricfunc):
     """
     metricbases = [metricfunc(data, rel_indices)\
                     for data in all_datasets]
+    metricbases = np.array(metricbases)
     metricdiff = metricbases[:,1] - metricbases[:,0]
     return sum(metricdiff>0)/len(metricdiff)
 
@@ -184,35 +188,59 @@ def permutation(all_datasets, rel_indices, metricfunc):
                         replace=False)
     return compute_metric(all_datasets, fake_indices, metricfunc)
 
-def permutations(all_datasets, rel_indices, metricfunc, num_perms=10_000):
+def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
     """
     *GENERATOR* on permutations
     """
+    print()
     for i in range(num_perms):
+        print(f"Permutation {i+1} of {num_perms}", end="\033[K\r")
         yield permutation(all_datasets, rel_indices, metricfunc)
 
-def extract_all_data():
+def run_data_analysis():
     """
-    Runs above analyses on all simulated hungergames data.
+    Runs above analyses on simulated hungergames data.
     """
+
+    colnames = ["popsize", "num_smart", "true_tgs_metric", "tgs_p_val",
+                    "true_area_metric", "area_p_val"]
+    df = []
 
     for popsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
+        for num_smart in config.POP_S_SMART_GUYS_HG[popsize]: #NOTE: CAN CHANGE AS YOU LIKE
+            print(f"Analysing n={popsize}, d_1={num_smart}.")
             files = _hungergames_files_for(popsize, num_smart)
-            gsizes, areas = [], []
-            for file_ in files:
-                data = _read_hungergames_data(file_)
-                group_s_d0, group_s_d1 = extract_groupsizes(data, num_smart)
-                area_d0, area_d1 = extract_areas(data, num_smart)
+            alldata = [_read_hungergames_data(file_) for file_ in files]
 
-                gsizes.append([group_s_d0, group_s_d1])
-                areas.append([area_d0, area_d1])
-            gsizes = np.array(gsizes)
-            areas = np.array(areas)
+            rel_indices = list(range(0, num_smart))
 
-            print(popsize, num_smart)
-            areadiff = areas[:,0] - areas[:,1]
-            print(sum(areadiff>0)/len(areadiff))
-        print()
+# first let's run group-size analyses
+            true_tgs_metric = compute_metric(alldata, rel_indices,
+                                                extract_groupsizes)
+            print("true_tgs_metric:", true_tgs_metric)
+            permuted_data = []
+            for p in permutations(alldata, rel_indices, extract_groupsizes):
+                permuted_data.append(p)
+            print()
+            permuted_data = np.array(permuted_data)
+            tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
+            print("tgs_p_val:", tgs_p_val)
 
-extract_all_data()
+# second repeat on area data
+            true_area_metric = compute_metric(alldata, rel_indices,
+                                                extract_areas)
+            print("true_area_metric:", true_area_metric)
+            permuted_data = []
+            for p in permutations(alldata, rel_indices, extract_areas):
+                permuted_data.append(p)
+            permuted_data = np.array(permuted_data)
+            print()
+            area_p_val = sum(permuted_data > true_area_metric)/len(permuted_data)
+            print("area_p_val:", area_p_val)
+
+            df.append([popsize, num_smart, true_tgs_metric, tgs_p_val,
+                        true_area_metric, area_p_val])
+
+    import pandas as pd
+    df = pd.DataFrame(df, columns=colnames)
+    df.to_csv(joinpath(config.DATA, "hungergames-results.csv"), index=False)

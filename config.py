@@ -15,7 +15,7 @@ formats=['png', 'pdf', 'svg']
 
 # Program flow
 RUN_SIMS = False
-CONDUCT_HUNGERGAMES = True
+CONDUCT_HUNGERGAMES = False
 ANALYSE_DATA = False
 ANALYSE_HUNGERGAMES = True
 
