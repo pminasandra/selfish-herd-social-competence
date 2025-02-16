@@ -207,7 +207,7 @@ def run_data_analysis():
     df = []
 
     for popsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in config.POP_S_SMART_GUYS_HG[popsize]: #NOTE: CAN CHANGE AS YOU LIKE
+        for num_smart in [5]: #NOTE: CAN CHANGE AS YOU LIKE
             print(f"Analysing n={popsize}, d_1={num_smart}.")
             files = _hungergames_files_for(popsize, num_smart)
             alldata = [_read_hungergames_data(file_) for file_ in files]
