@@ -16,8 +16,8 @@ formats=['png', 'pdf', 'svg']
 # Program flow
 RUN_SIMS = False
 CONDUCT_HUNGERGAMES = False
-ANALYSE_DATA = False
-ANALYSE_HUNGERGAMES = True
+ANALYSE_DATA = True
+ANALYSE_HUNGERGAMES = False
 
 
 # Gradient descent config

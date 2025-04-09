@@ -121,6 +121,43 @@ def gen_row_of_g_area_vars(positions, timerange):
 
     return all_areas_row
 
+def gen_row_of_g_speeds(positions, timerange):
+    all_speeds_row = []
+    for t in timerange:
+        data_sub = positions[:,:,t].copy()
+        xs, ys = data_sub[:,0], data_sub[:,1]
+        near_left = xs < 0.01 + 0.005
+        near_right = xs > 0.99 - 0.005
+        near_bottom = ys < 0.01 + 0.005
+        near_top = ys > 0.99 - 0.005
+
+        near_edge = near_left | near_right | near_bottom | near_top
+
+        data_sub = data_sub[~near_edge]
+        vels = 0.1*(positions[~near_edge,:,t+10] - positions[~near_edge,:,t])
+        speeds = np.sqrt((vels**2).sum(axis=1))
+
+        all_speeds_row.append(np.mean(speeds))
+
+    return all_speeds_row
+
+def gen_row_of_g_edgeeffects(positions, timerange):
+    all_ee_row = []
+    pcount = positions.shape[0]
+    for t in timerange:
+        data_sub = positions[:,:,t].copy()
+        xs, ys = data_sub[:,0], data_sub[:,1]
+        near_left = xs < 0.01 + 0.005
+        near_right = xs > 0.99 - 0.005
+        near_bottom = ys < 0.01 + 0.005
+        near_top = ys > 0.99 - 0.005
+
+        near_edge = near_left | near_right | near_bottom | near_top
+
+        all_ee_row.append(np.sum(near_edge)/pcount)
+
+    return all_ee_row
+
 def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)
     rows = []
@@ -160,16 +197,42 @@ def make_areavar_csv_for(pop_size, depth, timerange, eps=0.005):
     df = pd.DataFrame(rows, columns=col_labels)
     return df
 
+def make_speed_csv_for(pop_size, depth, timerange, eps=0.005):
+    all_files = _files_for(pop_size, depth)
+    rows = []
+    for file_ in all_files:
+        data = _read_data(file_)
+        uname = "-".join(file_[:-len(".pkl")].split("-")[2:])
+        rows.append([uname] + gen_row_of_g_speeds(data, timerange))
+
+    col_labels =["uname"] + [f"t{time}" for time in timerange]
+
+    df = pd.DataFrame(rows, columns=col_labels)
+    return df
+
+def make_edgeeffect_csv_for(pop_size, depth, timerange, eps=0.005):
+    all_files = _files_for(pop_size, depth)
+    rows = []
+    for file_ in all_files:
+        data = _read_data(file_)
+        uname = "-".join(file_[:-len(".pkl")].split("-")[2:])
+        rows.append([uname] + gen_row_of_g_edgeeffects(data, timerange))
+
+    col_labels =["uname"] + [f"t{time}" for time in timerange]
+
+    df = pd.DataFrame(rows, columns=col_labels)
+    return df
+
 if __name__ == "__main__":
     group_metrics = []
     if not config.ANALYSE_DATA:
         print("config.ANALYSE_DATA was False. Exiting.")
         quit()
-    timerange = range(0, 501, 20)
+    timerange = range(0, 481, 20)
     os.makedirs(joinpath(config.DATA, "Results"), exist_ok=True)
     for pop_size in config.ANALYSE_POP_SIZES:
         for depth in config.ANALYSE_DEPTHS:
             tgt_file = joinpath(config.DATA, "Results",
-                                    f"var-area-{pop_size}-d{depth}.csv")
-            data = make_areavar_csv_for(pop_size, depth, timerange, eps=0.02)
+                                    f"speed-{pop_size}-d{depth}.csv")
+            data = make_speed_csv_for(pop_size, depth, timerange, eps=0.02)
             data.to_csv(tgt_file, index=False)
