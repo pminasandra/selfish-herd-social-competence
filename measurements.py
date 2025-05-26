@@ -50,6 +50,39 @@ def dbscan(positions, eps=0.005):
 
     return clusters.labels_
 
+def group_touches_edge(data: np.ndarray, labels: np.ndarray) -> np.ndarray:
+    """
+    Returns a boolean array indicating whether each point is in a group
+    that touches the edge of the unit square.
+
+    Args:
+    - data: np.ndarray of shape (n, 2)
+    - labels: np.ndarray of shape (n,), cluster labels (e.g., from DBSCAN)
+
+    Returns:
+    - np.ndarray of shape (n,), dtype=bool
+    """
+    edge_threshold = 0.01
+    result = np.zeros(data.shape[0], dtype=bool)
+
+    for label in np.unique(labels):
+        if label == -1:
+            # Skip noise points
+            continue
+        group_indices = np.where(labels == label)[0]
+        group_points = data[group_indices]
+
+        # Check if any point in the group touches the edge
+        on_edge = (
+            (group_points[:, 0] < edge_threshold) |
+            (group_points[:, 0] > 1 - edge_threshold) |
+            (group_points[:, 1] < edge_threshold) |
+            (group_points[:, 1] > 1 - edge_threshold)
+        )
+        if np.any(on_edge):
+            result[group_indices] = True
+
+    return result
 
 def group_sizes(labels):
     """
@@ -157,6 +190,47 @@ def gen_row_of_g_edgeeffects(positions, timerange):
         all_ee_row.append(np.sum(near_edge)/pcount)
 
     return all_ee_row
+
+def extract_velocities_exclude_edge(
+    data: np.ndarray,
+    T_REL_MIN: int = 40,
+    T_REL_MAX: int = 200,
+    dbscan_fn = dbscan
+) -> list:
+    """
+    Extracts velocities from an n×2×t trajectory array for the timepoints
+    T_REL_MIN to T_REL_MAX (inclusive) in steps of 20, using dt=1,
+    while excluding individuals in groups that touch the edge of the unit square.
+
+    Parameters:
+    - data: np.ndarray of shape (n, 2, 500), trajectories
+    - T_REL_MIN: int, starting timepoint
+    - T_REL_MAX: int, ending timepoint
+    - dbscan_fn: function that takes (n, 2) array and returns (n,) cluster labels
+
+    Returns:
+    - List of velocity arrays (n_kept, 2), one for each selected timepoint
+    """
+    assert dbscan_fn is not None, "Must provide a dbscan function"
+
+    # Use positions at T_REL_MIN to define clusters
+    positions = data[:, :, T_REL_MIN]  # shape: (n, 2)
+    labels = dbscan_fn(positions)
+
+    # Identify individuals in edge-touching groups
+    edge_mask = group_touches_edge(positions, labels)
+
+    # Select only non-edge individuals
+    keep_mask = ~edge_mask
+
+    velocities = []
+    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+        if t + 1 >= data.shape[2]:
+            break
+        vel = data[keep_mask, :, t + 1] - data[keep_mask, :, t]
+        velocities.extend(list(np.sqrt((vel**2).sum(axis=1))))
+
+    return velocities
 
 def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)
