@@ -92,7 +92,6 @@ def group_sizes(labels):
     group_labels, group_sizes = np.unique(labels, return_counts=True)
     return group_sizes
 
-
 def typical_group_size(group_sizes):
     """
     Computes typical group size.
@@ -105,6 +104,34 @@ def typical_group_size(group_sizes):
     """
 
     return (group_sizes**2).sum()/group_sizes.sum()
+
+
+def extract_all_group_sizes(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200, dbscan_fn=dbscan) -> list:
+    """
+    Collects all group sizes between t=T_REL_MIN and t=T_REL_MAX (inclusive)
+    in steps of 20 using DBSCAN clustering.
+
+    Parameters:
+    - data: np.ndarray of shape (n, 2, 500)
+    - dbscan_fn: function (n, 2) -> (n,) cluster labels
+
+    Returns:
+    - List[int]: group sizes across all selected timepoints
+    """
+    assert dbscan_fn is not None
+    group_sizes_all = []
+
+    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+        if t >= data.shape[2]:
+            break
+
+        positions = data[:, :, t]  # shape: (n, 2)
+        labels = dbscan_fn(positions)
+        sizes = group_sizes(labels)
+        tgs = typical_group_size(sizes)
+
+        group_sizes_all.append(tgs)
+    return group_sizes_all
 
 
 def average_typical_group_size(data, timerange, eps=0.005):
@@ -142,6 +169,32 @@ def gen_row_of_g_areas(positions, timerange):
         all_areas_row.append(np.median(areas))
 
     return all_areas_row
+
+def extract_log_voronoi_areas(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200) -> list:
+    """
+    Extracts log Voronoi cell areas for each individual between
+    T_REL_MIN and T_REL_MAX (inclusive, step 20).
+
+    Parameters:
+    - data: np.ndarray of shape (n, 2, 500)
+    
+    Returns:
+    - List[float]: flattened list of log-areas
+    """
+    log_areas = []
+
+    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+        if t >= data.shape[2]:
+            break
+
+        data_sub = data[:, :, t].copy()  # shape: (n, 2)
+        vor = voronoi.get_bounded_voronoi(data_sub)
+        areas = voronoi.get_areas(data_sub, vor)  # shape: (n,)
+
+        # Take log of each area (safely)
+        log_areas.extend(np.log(areas + 1e-10).tolist())  # small epsilon to avoid log(0)
+
+    return log_areas
 
 def gen_row_of_g_area_vars(positions, timerange):
     all_areas_row = []
@@ -231,6 +284,43 @@ def extract_velocities_exclude_edge(
         velocities.extend(list(np.sqrt((vel**2).sum(axis=1))))
 
     return velocities
+
+def extract_polarisations_exclude_edge(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200, dbscan_fn=dbscan) -> list:
+    """
+    Computes group polarisation from movement between t and t+1, for timepoints
+    T_REL_MIN to T_REL_MAX in steps of 20. Excludes edge-touching individuals.
+
+    Parameters:
+    - data: np.ndarray of shape (n, 2, 500)
+    - dbscan_fn: function (n, 2) -> (n,) cluster labels
+
+    Returns:
+    - List of floats: polarisation values, each repeated k times (for k individuals)
+    """
+    assert dbscan_fn is not None
+    positions = data[:, :, T_REL_MIN]  # shape: (n, 2)
+    labels = dbscan_fn(positions)
+    edge_mask = group_touches_edge(positions, labels)
+    keep_mask = ~edge_mask
+
+    polarisation_values = []
+    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+        if t + 1 >= data.shape[2]:
+            break
+
+        vel = data[keep_mask, :, t + 1] - data[keep_mask, :, t]  # shape (k, 2)
+        norms = np.linalg.norm(vel, axis=1, keepdims=True)
+        valid = norms[:, 0] > 1e-8  # Avoid divide-by-zero
+        unit_vectors = np.zeros_like(vel)
+        unit_vectors[valid] = vel[valid] / norms[valid]
+
+        mean_vector = np.mean(unit_vectors[valid], axis=0)
+        polarisation = np.linalg.norm(mean_vector)
+
+        k = unit_vectors.shape[0]
+        polarisation_values.extend([polarisation] * k)
+
+    return polarisation_values
 
 def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)

@@ -52,9 +52,12 @@ def get_cis_for(df, ulim=0.975, llim=0.025):
 
     return res
 
-def speed_violinplot():
+def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
     """
     Makes a violinplot of speed as a function of depth of reasoning
+    Args:
+        fn: what function to use to compute data for plotting
+        ydesc: str description of wth you are measuring
     """
     records = []
 
@@ -64,10 +67,10 @@ def speed_violinplot():
             for f in files:
                 try:
                     data = measurements._read_data(f)  # Should be n×2×500 array
-                    speeds = measurements.extract_velocities_exclude_edge(data)
-                    for s in speeds:
+                    points = fn(data)
+                    for s in points:
                         records.append({
-                            "speed": s,
+                            ydesc: s,
                             "depth": depth,
                             "pop_size": pop_size
                         })
@@ -77,13 +80,27 @@ def speed_violinplot():
     df = pd.DataFrame.from_records(records)
 
     # Plot
-    fig, ax = plt.subplots()
+
+    if fig is None or ax is None:
+        fig, ax = plt.subplots()
     sns.set(style="whitegrid")
-    g = sns.violinplot(data=df, x="pop_size", y="speed", hue="depth", dodge=True, ax=ax, inner='box', palette="pastel")
+    g = sns.violinplot(data=df, x="pop_size", y=ydesc, hue="depth", dodge=True, ax=ax, inner='box', palette=palette)
     ax.set_xlabel("Population size")
-    ax.set_ylabel("Speed")
-    ax.legend(title="Depth of reasoning", fontsize="small", title_fontsize="small")
-    utilities.saveimg(fig, "speed-violinplot")
+    ax.set_ylabel(ydesc)
+#    ax.legend(title="Depth of reasoning", fontsize="small", title_fontsize="small")
+    ax.legend(
+        title="Depth of reasoning",
+        fontsize="x-small",
+        title_fontsize="x-small",
+        handlelength=1.5,
+        handletextpad=0.4,
+        labelspacing=0.3,
+        borderpad=0.5
+    )
+
+    return fig, ax
 
 if __name__ == "__main__":
-    speed_violinplot()
+    fig, ax = plt.subplots()
+    make_violinplot(measurements.extract_log_voronoi_areas, ydesc="log_area", fig=fig, ax=ax, palette="dark")
+    utilities.saveimg(fig, "vplot-logarea")
