@@ -7,6 +7,6 @@
 - [x] make ggplots for appropriate metrics
 - [x] generalise movement code for more broad mixtures of d_is
 - [x] write structural code to run hunger games for n=25 and n=87
-- [ ] proximate measures like speed and group polarisation
-- [ ] violin charts for hungergames
+- [x] proximate measures like speed and group polarisation
+- [x] violin charts for hungergames
 - [ ] packing and unpacking data into parquet files
