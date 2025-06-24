@@ -9,6 +9,8 @@ import uuid
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 
 import config
 import measurements
@@ -142,6 +144,8 @@ def extract_areas(dataset, rel_indices):
 
         area_d0 = -np.log(areas[non_indices]).mean()
         area_d1 = -np.log(areas[rel_indices]).mean()
+#        area_d0 = np.log(areas[non_indices]).mean()
+#        area_d1 = np.log(areas[rel_indices]).mean()
         # NOTE: -np.log is chosen because hypothesis testing
         # functions below test for focal > non-focal, whereas 
         # area_focal < area_non-focal is our hypothesis.
@@ -223,6 +227,10 @@ def run_data_analysis():
                 permuted_data.append(p)
             print()
             permuted_data = np.array(permuted_data)
+            fig, ax = plt.subplots()
+            ax.hist(permuted_data, 100)
+            ax.axvline(true_tgs_metric, color="red")
+            utilities.saveimg(fig, "group_size_stat_test")
             tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
             print("tgs_p_val:", tgs_p_val)
 
@@ -234,6 +242,10 @@ def run_data_analysis():
             for p in permutations(alldata, rel_indices, extract_areas):
                 permuted_data.append(p)
             permuted_data = np.array(permuted_data)
+            fig, ax = plt.subplots()
+            ax.hist(permuted_data, 100)
+            ax.axvline(true_area_metric, color="red")
+            utilities.saveimg(fig, "area_stat_test")
             print()
             area_p_val = sum(permuted_data > true_area_metric)/len(permuted_data)
             print("area_p_val:", area_p_val)
@@ -244,3 +256,52 @@ def run_data_analysis():
     import pandas as pd
     df = pd.DataFrame(df, columns=colnames)
     df.to_csv(joinpath(config.DATA, "hungergames-results.csv"), index=False)
+
+
+def violinplot_tgs_and_area_by_pop():
+    records = []
+    for popsize in config.POP_S_SMART_GUYS_HG:
+        for num_smart in [5]:  # Adjust if needed
+            files = _hungergames_files_for(popsize, num_smart)
+            for f in files:
+                try:
+                    data = _read_hungergames_data(f)
+                    rel_indices = list(range(num_smart))
+
+                    tgs_d0, tgs_d1 = extract_groupsizes(data, rel_indices)
+                    area_d0, area_d1 = extract_areas(data, rel_indices)
+
+                    records.extend([
+                        {"metric": "TGS", "type": "d_0", "value": tgs_d0, "pop_size": popsize},
+                        {"metric": "TGS", "type": "d_1", "value": tgs_d1, "pop_size": popsize},
+                        {"metric": "Area", "type": "d_0", "value": area_d0, "pop_size": popsize},
+                        {"metric": "Area", "type": "d_1", "value": area_d1, "pop_size": popsize},
+                    ])
+                except Exception as e:
+                    print(f"Skipping {f}: {e}")
+
+    df = pd.DataFrame(records)
+
+    # Plot setup
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5), sharey=False)
+    sns.set(style="whitegrid")
+
+    for i, metric in enumerate(["TGS", "Area"]):
+        ax = axs[i]
+        sns.violinplot(
+            data=df[df["metric"] == metric],
+            x="pop_size", y="value", hue="type",
+            ax=ax, inner="box", palette="pastel", cut=0, dodge=True
+        )
+        ax.set_title(metric)
+        ax.set_xlabel("Population size")
+        ax.set_ylabel(metric)
+        ax.set_ylabel("")
+        ax.legend(title="Type", labels=["$d_0$", "$d_1$"], fontsize="small", title_fontsize="small")
+
+    plt.tight_layout()
+    utilities.saveimg(fig, "vplot-hungergames")
+
+if __name__ == "__main__":
+    run_data_analysis()
+    #violinplot_tgs_and_area_by_pop()

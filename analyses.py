@@ -65,17 +65,14 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
         for depth in config.ANALYSE_DEPTHS:
             files = measurements._files_for(pop_size, depth)
             for f in files:
-                try:
-                    data = measurements._read_data(f)  # Should be n×2×500 array
-                    points = fn(data)
-                    for s in points:
-                        records.append({
-                            ydesc: s,
-                            "depth": depth,
-                            "pop_size": pop_size
-                        })
-                except Exception as e:
-                    print(f"Skipping {f} due to error: {e}")
+                data = measurements._read_data(f)  # Should be n×2×500 array
+                points = fn(data)
+                for s in points:
+                    records.append({
+                        ydesc: s,
+                        "depth": depth,
+                        "pop_size": pop_size
+                    })
 
     df = pd.DataFrame.from_records(records)
 
@@ -84,7 +81,10 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
     if fig is None or ax is None:
         fig, ax = plt.subplots()
     sns.set(style="whitegrid")
-    g = sns.violinplot(data=df, x="pop_size", y=ydesc, hue="depth", dodge=True, ax=ax, inner='box', palette=palette)
+    g = sns.violinplot(data=df, x="pop_size", y=ydesc, hue="depth",
+                        dodge=True, ax=ax, inner='box', palette=palette,
+                        bw_method=0.05
+                    )
     ax.set_xlabel("Population size")
     ax.set_ylabel(ydesc)
 #    ax.legend(title="Depth of reasoning", fontsize="small", title_fontsize="small")
@@ -102,5 +102,5 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
 
 if __name__ == "__main__":
     fig, ax = plt.subplots()
-    make_violinplot(measurements.extract_log_voronoi_areas, ydesc="log_area", fig=fig, ax=ax, palette="dark")
-    utilities.saveimg(fig, "vplot-logarea")
+    make_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
+    utilities.saveimg(fig, "vplot-polarisation")

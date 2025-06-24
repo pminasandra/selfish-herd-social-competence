@@ -265,6 +265,7 @@ def extract_velocities_exclude_edge(
     - List of velocity arrays (n_kept, 2), one for each selected timepoint
     """
     assert dbscan_fn is not None, "Must provide a dbscan function"
+    dt = 5
 
     # Use positions at T_REL_MIN to define clusters
     positions = data[:, :, T_REL_MIN]  # shape: (n, 2)
@@ -278,49 +279,63 @@ def extract_velocities_exclude_edge(
 
     velocities = []
     for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
-        if t + 1 >= data.shape[2]:
+        if t + dt >= data.shape[2]:
             break
-        vel = data[keep_mask, :, t + 1] - data[keep_mask, :, t]
+        vel = (data[keep_mask, :, t + dt] - data[keep_mask, :, t])/dt
         velocities.extend(list(np.sqrt((vel**2).sum(axis=1))))
 
     return velocities
 
 def extract_polarisations_exclude_edge(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200, dbscan_fn=dbscan) -> list:
     """
-    Computes group polarisation from movement between t and t+1, for timepoints
-    T_REL_MIN to T_REL_MAX in steps of 20. Excludes edge-touching individuals.
-
-    Parameters:
-    - data: np.ndarray of shape (n, 2, 500)
-    - dbscan_fn: function (n, 2) -> (n,) cluster labels
+    Computes polarisation for each group (excluding edge-touching and singleton groups).
 
     Returns:
-    - List of floats: polarisation values, each repeated k times (for k individuals)
+    - List[float]: Each group's polarisation repeated k times (group size k, k > 1)
     """
     assert dbscan_fn is not None
-    positions = data[:, :, T_REL_MIN]  # shape: (n, 2)
-    labels = dbscan_fn(positions)
-    edge_mask = group_touches_edge(positions, labels)
+
+    positions_ref = data[:, :, T_REL_MIN]
+    labels_ref = dbscan_fn(positions_ref)
+    edge_mask = group_touches_edge(positions_ref, labels_ref)
     keep_mask = ~edge_mask
 
-    polarisation_values = []
+    polarisations = []
+
     for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
         if t + 1 >= data.shape[2]:
             break
 
-        vel = data[keep_mask, :, t + 1] - data[keep_mask, :, t]  # shape (k, 2)
-        norms = np.linalg.norm(vel, axis=1, keepdims=True)
-        valid = norms[:, 0] > 1e-8  # Avoid divide-by-zero
-        unit_vectors = np.zeros_like(vel)
-        unit_vectors[valid] = vel[valid] / norms[valid]
+        positions_t = data[:, :, t]
+        positions_t1 = data[:, :, t + 1]
 
-        mean_vector = np.mean(unit_vectors[valid], axis=0)
-        polarisation = np.linalg.norm(mean_vector)
+        pos = positions_t[keep_mask]
+        pos1 = positions_t1[keep_mask]
 
-        k = unit_vectors.shape[0]
-        polarisation_values.extend([polarisation] * k)
+        labels = dbscan_fn(pos)
 
-    return polarisation_values
+        for label in np.unique(labels):
+            if label == -1:
+                continue  # skip noise
+
+            group_idx = np.where(labels == label)[0]
+            if len(group_idx) <= 1:
+                continue  # skip singleton groups
+
+            group_vel = pos1[group_idx] - pos[group_idx]
+            norms = np.linalg.norm(group_vel, axis=1, keepdims=True)
+
+            valid = norms[:, 0] > 1e-8
+            unit_vecs = np.zeros_like(group_vel)
+            unit_vecs[valid] = group_vel[valid] / norms[valid]
+
+            mean_vec = np.mean(unit_vecs[valid], axis=0)
+            polarisation = np.linalg.norm(mean_vec)
+
+            k = len(group_idx)
+            polarisations.extend([polarisation] * k)
+
+    return polarisations
 
 def make_tgs_csv_for(pop_size, depth, timerange, eps=0.005):
     all_files = _files_for(pop_size, depth)
