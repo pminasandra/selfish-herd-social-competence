@@ -231,7 +231,7 @@ def run_data_analysis():
             ax.hist(permuted_data, 100)
             ax.axvline(true_tgs_metric, color="red")
             ax.set_xlabel(r"$-\log(\text{Group size})$")
-            utilities.saveimg(fig, "stat_test_tgs")
+            utilities.saveimg(fig, f"stat_test_tgs_{popsize}")
             tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
             print("tgs_p_val:", tgs_p_val)
 
@@ -247,7 +247,7 @@ def run_data_analysis():
             ax.hist(permuted_data, 100)
             ax.axvline(true_area_metric, color="red")
             ax.set_xlabel(r"$-\log(\text{Area})$")
-            utilities.saveimg(fig, "stat_test_area")
+            utilities.saveimg(fig, f"stat_test_area_{popsize}")
             print()
             area_p_val = sum(permuted_data > true_area_metric)/len(permuted_data)
             print("area_p_val:", area_p_val)
