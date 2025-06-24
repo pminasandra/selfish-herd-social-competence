@@ -216,3 +216,4 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+sim_results.h5
