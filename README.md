@@ -80,22 +80,5 @@ available trajectory data.
 a 3.5GB file anywhere these days. I'll try my best to put it up.
 
 
-## Reproducibility for R script
-
-The repository includes an R script `plot.R` that generated figures from the data. The script is set up to ensure that the required R libraries are installed and their versions match the development environment. This is managed using the `renv` package.
-
-The script automatically installs `renv` if not already installed:
-```
-if (!requireNamespace("renv", quietly = TRUE)) {
-  install.packages("renv") }
-```
-The script also restores the required R environment, ensuring all libraries and versions match the development setup:
-
-```
-renv::restore()
-```
-
-
-
 # Bibliography
 Hamilton, W. D. (1971). Geometry for the selfish herd. Journal of theoretical Biology, 31(2), 295-311.
