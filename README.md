@@ -72,12 +72,11 @@ Then run `python3 main.py`.
 
 **Note:** simulating the trajectories requires a lot
 of computational power and will take a very long time. We have made our
-trajectories available to you. Download them from [here]() and place it in the
+trajectories available to you. Download them from
+[here](https://owncloud.gwdg.de/index.php/s/dPDhQlMGvQYQweG) and place the
+download in the
 directory with your code. Then run `python3 datapacking.py unpack` to unpack
 available trajectory data.
-
-**Note to self:** the link above isn't working. It seems impossible to host
-a 3.5GB file anywhere these days. I'll try my best to put it up.
 
 
 # Bibliography
