@@ -9,4 +9,4 @@
 - [x] write structural code to run hunger games for n=25 and n=87
 - [x] proximate measures like speed and group polarisation
 - [x] violin charts for hungergames
-- [ ] packing and unpacking data into parquet files
+- [x] packing and unpacking data into parquet files
