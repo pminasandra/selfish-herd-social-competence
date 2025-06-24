@@ -1,3 +1,4 @@
+import argparse
 import h5py
 import os
 import pickle
@@ -72,6 +73,12 @@ def unpack_data(h5_path=STORAGE_H5, target_dir=config.DATA):
 # extract_h5_to_pkls("all_simulations.h5", "restored_simulations")
 
 if __name__ == "__main__":
-    pack_data()
-    input("Continue? (press any key)")
-    unpack_data(target_dir = Path(config.DATA) / "trial")
+    arser = argparse.ArgumentParser(description="Pack or unpack simulation data.")
+    parser.add_argument("action", choices=["pack", "unpack"], help="Action to perform")
+
+    args = parser.parse_args()
+
+    if args.action == "pack":
+        pack_data()
+    elif args.action == "unpack":
+        unpack_data()
