@@ -101,6 +101,6 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
     return fig, ax
 
 if __name__ == "__main__":
-    fig, ax = plt.subplots()
-    make_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
-    utilities.saveimg(fig, "vplot-polarisation")
+    fig, ax = plt.subplots(figsize=(11.45, 4.921))
+    make_violinplot(measurements.extract_log_voronoi_areas, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
+    utilities.saveimg(fig, "vplot-logarea")

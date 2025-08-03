@@ -206,7 +206,7 @@ def run_data_analysis():
     Runs above analyses on simulated hungergames data.
     """
 
-    colnames = ["popsize", "num_smart", "true_tgs_metric", "tgs_p_val",
+    colnames = ["popsize", "num_smart",
                     "true_area_metric", "area_p_val"]
     df = []
 
@@ -218,41 +218,42 @@ def run_data_analysis():
 
             rel_indices = list(range(0, num_smart))
 
-# first let's run group-size analyses
-            true_tgs_metric = compute_metric(alldata, rel_indices,
-                                                extract_groupsizes)
-            print("true_tgs_metric:", true_tgs_metric)
-            permuted_data = []
-            for p in permutations(alldata, rel_indices, extract_groupsizes):
-                permuted_data.append(p)
-            print()
-            permuted_data = np.array(permuted_data)
-            fig, ax = plt.subplots()
-            ax.hist(permuted_data, 100)
-            ax.axvline(true_tgs_metric, color="red")
-            ax.set_xlabel(r"$-\log(\text{Group size})$")
-            utilities.saveimg(fig, f"stat_test_tgs_{popsize}")
-            tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
-            print("tgs_p_val:", tgs_p_val)
+## first let's run group-size analyses
+#            true_tgs_metric = compute_metric(alldata, rel_indices,
+#                                                extract_groupsizes)
+#            print("true_tgs_metric:", true_tgs_metric)
+#            permuted_data = []
+#            for p in permutations(alldata, rel_indices, extract_groupsizes):
+#                permuted_data.append(p)
+#            print()
+#            permuted_data = np.array(permuted_data)
+#            fig, ax = plt.subplots()
+#            ax.hist(permuted_data, 100)
+#            ax.axvline(true_tgs_metric, color="red")
+#            ax.set_xlabel(r"$-\log(\text{Group size})$")
+#            utilities.saveimg(fig, f"stat_test_tgs_{popsize}")
+#            tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
+#            print("tgs_p_val:", tgs_p_val)
 
 # second repeat on area data
             true_area_metric = compute_metric(alldata, rel_indices,
                                                 extract_areas)
             print("true_area_metric:", true_area_metric)
             permuted_data = []
-            for p in permutations(alldata, rel_indices, extract_areas):
+            for p in permutations(alldata, rel_indices, extract_areas, num_perms=5000):
                 permuted_data.append(p)
             permuted_data = np.array(permuted_data)
             fig, ax = plt.subplots()
-            ax.hist(permuted_data, 100)
+            ax.hist(permuted_data, 75)
             ax.axvline(true_area_metric, color="red")
-            ax.set_xlabel(r"$-\log(\text{Area})$")
+            print(f"Out of {len(permuted_data)} sims, {sum(permuted_data >= true_area_metric)} were served.")
+            ax.set_xlabel("Proportion of sims with smaller domains of danger")
             utilities.saveimg(fig, f"stat_test_area_{popsize}")
             print()
-            area_p_val = sum(permuted_data > true_area_metric)/len(permuted_data)
+            area_p_val = sum(permuted_data >= true_area_metric)/len(permuted_data)
             print("area_p_val:", area_p_val)
 
-            df.append([popsize, num_smart, true_tgs_metric, tgs_p_val,
+            df.append([popsize, num_smart,
                         true_area_metric, area_p_val])
 
     import pandas as pd
