@@ -7,7 +7,6 @@ Provides class SelfishHerd, a parallelisable way to instantiate and run
 simulations.
 """
 
-import os.path
 import pickle
 
 import numpy as np
@@ -43,7 +42,7 @@ class SelfishHerd:
             t (int): how many iterations to update the model.
         """
 
-        for i in range(t):
+        for _ in range(t):
             locs = self.records.copy()[:,:,-1]
             vor = voronoi.get_bounded_voronoi(locs)
 
