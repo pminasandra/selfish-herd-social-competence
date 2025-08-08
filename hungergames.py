@@ -20,13 +20,16 @@ import voronoi
 
 def hungergame(init_locs, num_smart):
     """
-    Sets up and runs an individual contest, starting a smart selfish herd
+    Sets up an individual contest, starting a smart selfish herd
     of n individuals, of which the first num_smart are d_1 and the rest
     are d_0.
 
     Args:
         init_locs (n×2 array-like): initial locations of agents
-        num_smart (int): how many d1 individuals 
+        num_smart (int): how many d1 individuals
+    Returns:
+        selfishherd.SelfishHerd,
+        fname (str)
     """
 
     num_inds = init_locs.shape[0]
@@ -72,50 +75,6 @@ def _read_hungergames_data(filename):
 
 # following analyses will be done after initial randomness
 # let's say we will look at t=150 to t=250
-
-def extract_groupsizes(dataset, rel_indices):
-    """
-    For a given dataset containing focal and nonfocal individuals,  returns TGS
-    for focal and nonfocal individuals separately.
-
-    Args:
-        dataset (array-like, n×2×t): location data across time.
-        rel_indices (array-like): indices of focal individuals
-
-    Returns:
-        tuple of floats: (tgs_nonfocal, tgs_focal)
-    """
-    dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
-                            config.HUNGERGAMES_TIME_LIMS[1]]
-
-
-    ttotal = dataset.shape[2]
-    values_across_time = []
-    non_indices = list(range(dataset.shape[0]))
-    non_indices = [j for j in non_indices if j not in rel_indices]
-    for t in range(0, ttotal, 20):
-        data_sub = dataset[:,:,t]
-        group_ids = measurements.dbscan(data_sub)
-
-        group_sizes_per_ind = np.zeros(group_ids.shape)
-        group_labels, group_sizes = np.unique(group_ids, return_counts=True)
-        
-        for group in np.unique(group_ids):
-            index = group_labels == group #mask
-            assert sum(index) == 1 # can only be one with this label
-            size = group_sizes[index][0]
-
-            group_sizes_per_ind[group_ids == group] = size
-
-        mean_d0 = group_sizes_per_ind[non_indices].mean()
-        mean_d1 = group_sizes_per_ind[rel_indices].mean()
-
-        values_across_time.append([mean_d0, mean_d1])
-
-    values_across_time = np.array(values_across_time)
-
-    results =  values_across_time.mean(axis=0)
-    return results[0], results[1]
 
 def extract_areas(dataset, rel_indices):
     """
@@ -218,24 +177,7 @@ def run_data_analysis():
 
             rel_indices = list(range(0, num_smart))
 
-## first let's run group-size analyses
-#            true_tgs_metric = compute_metric(alldata, rel_indices,
-#                                                extract_groupsizes)
-#            print("true_tgs_metric:", true_tgs_metric)
-#            permuted_data = []
-#            for p in permutations(alldata, rel_indices, extract_groupsizes):
-#                permuted_data.append(p)
-#            print()
-#            permuted_data = np.array(permuted_data)
-#            fig, ax = plt.subplots()
-#            ax.hist(permuted_data, 100)
-#            ax.axvline(true_tgs_metric, color="red")
-#            ax.set_xlabel(r"$-\log(\text{Group size})$")
-#            utilities.saveimg(fig, f"stat_test_tgs_{popsize}")
-#            tgs_p_val = sum(permuted_data > true_tgs_metric)/len(permuted_data)
-#            print("tgs_p_val:", tgs_p_val)
-
-# second repeat on area data
+# area data analyses
             true_area_metric = compute_metric(alldata, rel_indices,
                                                 extract_areas)
             print("true_area_metric:", true_area_metric)

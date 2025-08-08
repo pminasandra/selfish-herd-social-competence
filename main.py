@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
         for pop_size in POP_SIZES:
             print("Working on pop_size", pop_size)
-# if some data already exists, account for that
+            # if some data already exists, account for that
             existing_files = measurements._files_for(pop_size, 0)
             if len(list(existing_files)) == 0:
                 inits = [np.random.uniform(size=(pop_size, 2))\
@@ -76,6 +76,8 @@ if __name__ == "__main__":
                 contests = hungergames.hungergames(popsize, 
                                                 num_smart,
                                                 config.NUM_REPEATS)
+                                                
+                # Now execute all these contests
                 pool = mp.Pool()
                 pool.starmap(runmodel, contests)
                 pool.close()

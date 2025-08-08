@@ -295,16 +295,18 @@ def extract_polarisations_exclude_edge(data: np.ndarray, T_REL_MIN=40, T_REL_MAX
     """
     assert dbscan_fn is not None
 
-    positions_ref = data[:, :, T_REL_MIN]
-    labels_ref = dbscan_fn(positions_ref)
-    edge_mask = group_touches_edge(positions_ref, labels_ref)
-    keep_mask = ~edge_mask
+    
 
     polarisations = []
 
     for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
         if t + 1 >= data.shape[2]:
             break
+            
+        positions_ref = data[:, :, t]
+        labels_ref = dbscan_fn(positions_ref)
+        edge_mask = group_touches_edge(positions_ref, labels_ref)
+        keep_mask = ~edge_mask
 
         positions_t = data[:, :, t]
         positions_t1 = data[:, :, t + 1]

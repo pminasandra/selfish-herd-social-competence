@@ -10,3 +10,6 @@
 - [x] proximate measures like speed and group polarisation
 - [x] violin charts for hungergames
 - [x] packing and unpacking data into parquet files
+- [ ] main.py config.RUN_SIMS block update to actually run NUM_SIMS times if
+        existing data are found.
+
