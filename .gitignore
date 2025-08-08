@@ -217,3 +217,4 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 sim_results.h5
+.~lock*# #ods editing
