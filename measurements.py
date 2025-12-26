@@ -16,6 +16,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
+from scipy.spatial import ConvexHull, QhullError
 
 import config
 import voronoi
@@ -403,6 +404,56 @@ def make_edgeeffect_csv_for(pop_size, depth, timerange, eps=0.005):
 
     df = pd.DataFrame(rows, columns=col_labels)
     return df
+
+def extract_all_group_areas(
+    data: np.ndarray,
+    T_REL_MIN: int = 40,
+    T_REL_MAX: int = 200,
+    dbscan_fn=dbscan,
+) -> list[float]:
+    """
+    Across timepoints t in [T_REL_MIN, T_REL_MAX] (step=20), cluster individuals,
+    then compute convex-hull area for each non-noise group that:
+      - has at least 3 individuals, and
+      - does NOT touch the unit-square edge (via group_touches_edge).
+
+    Returns a flat list of hull areas aggregated over all eligible groups/timepoints.
+    """
+    assert dbscan_fn is not None
+    areas_all: list[float] = []
+
+    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+        if t >= data.shape[2]:
+            break
+
+        positions = data[:, :, t]  # (n, 2)
+        labels = dbscan_fn(positions)
+
+        touches = group_touches_edge(positions, labels)  # (n,) bool
+
+        for label in np.unique(labels):
+            if label == -1:
+                continue  # noise
+
+            group_idx = np.where(labels == label)[0]
+            if group_idx.size < 3:
+                continue  # hull area undefined / meaningless
+
+            # Cluster-level edge condition: if any member touches, skip entire group
+            if np.any(touches[group_idx]):
+                continue
+
+            pts = positions[group_idx]
+
+            # In 2D, ConvexHull.volume is the polygon area (and .area is perimeter).
+            try:
+                hull = ConvexHull(pts)
+                areas_all.append([group_idx.size, float(hull.volume)])
+            except QhullError:
+                # Degenerate cases (e.g., collinear points) -> skip
+                continue
+
+    return areas_all
 
 if __name__ == "__main__":
     group_metrics = []

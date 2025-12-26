@@ -100,7 +100,55 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
 
     return fig, ax
 
+def compare_gpsize_area_relation():
+    plot_data = {}
+    for pop_size in config.ANALYSE_POP_SIZES:
+        for depth in config.ANALYSE_DEPTHS:
+            if depth not in plot_data:
+                plot_data[depth] = []
+            files = measurements._files_for(pop_size, depth)
+
+            for f in files:
+                data = measurements._read_data(f)  # Should be n×2×500 array
+
+                size_areas = measurements.extract_all_group_areas(data)
+                plot_data[depth].extend(size_areas)
+
+    fig, ax = plt.subplots()
+    dfs = []
+    for depth in config.ANALYSE_DEPTHS:
+        xs = [point[0] for point in plot_data[depth]]
+        ys = [point[1] for point in plot_data[depth]]
+
+        df = pd.DataFrame({"Group Size": xs, "Group Area": ys})
+        df = df[df["Group Size"] < 35] #for better plotting
+        df.loc[:, "Depth"] = f"$d_{depth}$"
+        dfs.append(df)
+
+    df = pd.concat(dfs)
+    sns.pointplot(data=df,
+        x="Group Size",
+        y="Group Area",
+        hue="Depth",
+        estimator=np.median,
+        linestyle=None,
+        errorbar=("pi", 50),
+        ax=ax,
+        markersize=3,
+        err_kws={"alpha": 0.4, "linewidth": 0.8},
+        alpha= 0.6,
+        dodge=0.3
+    )
+
+    ax.set_yscale("log")
+    ax.set_xticks(ax.get_xticks()[2::5])
+    utilities.saveimg(fig, "gpsize_area_relation")
+            
+                
+
+
 if __name__ == "__main__":
-    fig, ax = plt.subplots(figsize=(11.45, 4.921))
-    make_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
-    utilities.saveimg(fig, "vplot-polarisations")
+#    fig, ax = plt.subplots(figsize=(11.45, 4.921))
+#    make_violinplot(measurements.extract_all_group_sizes, ydesc="group size", fig=fig, ax=ax, palette="pastel")
+#    utilities.saveimg(fig, "vplot-group-sizes")
+    compare_gpsize_area_relation()
