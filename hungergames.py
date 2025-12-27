@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+
 import config
 import measurements
 import selfishherd
@@ -247,6 +248,95 @@ def violinplot_tgs_and_area_by_pop():
     plt.tight_layout()
     utilities.saveimg(fig, "vplot-hungergames")
 
+def run_surroundedness_analysis(
+    T_REL_MIN: int = 40,
+    T_REL_MAX: int = 200,
+    dbscan_fn=measurements.dbscan,
+):
+    """
+    For each pop size and num_smart (currently [5]), load all hungergames data,
+    subsample the same timestamps as in the area/size analyses, compute
+    circumpolar-variance surroundedness for each individual, and collect
+    surroundedness values separately for smart (IDs [0:num_smart]) and
+    non-smart (IDs [num_smart:]) individuals.
+
+    For each pop_size, produces a violin plot comparing the distributions of
+    surroundedness for smart vs non-smart individuals.
+    """
+    dfs = []
+    for popsize in config.POP_S_SMART_GUYS_HG:
+        for num_smart in [5]:  # can extend this list later
+            print(f"Analysing surroundedness: n={popsize}, d_1={num_smart}.")
+            files = _hungergames_files_for(popsize, num_smart)
+            alldata = [_read_hungergames_data(file_) for file_ in files]  # list of (N, 2, T)
+
+            smart_surrounded = []
+            nonsmart_surrounded = []
+
+            for data in alldata:
+                # data: (N, 2, T)
+                N, _, T = data.shape
+
+                # time subsampling as in extract_all_group_areas / extract_all_group_sizes
+                for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+                    if t >= T:
+                        break
+
+                    positions_t = data[:, :, t]  # (N, 2)
+
+                    # compute surroundedness at this time
+                    surr = measurements.compute_surroundedness(positions_t, dbscan_fn=dbscan_fn)  # (N,)
+
+                    # split smart vs non-smart, filter NaNs
+                    smart_idx = np.arange(num_smart)
+                    nonsmart_idx = np.arange(num_smart, N)
+
+                    smart_vals = surr[smart_idx]
+                    nonsmart_vals = surr[nonsmart_idx]
+
+                    smart_vals = smart_vals[~np.isnan(smart_vals)]
+                    nonsmart_vals = nonsmart_vals[~np.isnan(nonsmart_vals)]
+
+                    if smart_vals.size > 0:
+                        smart_surrounded.extend(smart_vals.tolist())
+                    if nonsmart_vals.size > 0:
+                        nonsmart_surrounded.extend(nonsmart_vals.tolist())
+
+            # build DataFrame for this popsize / num_smart
+            df = pd.DataFrame(
+                {
+                    "Surroundedness": smart_surrounded + nonsmart_surrounded,
+                    "Type": (["Smart"] * len(smart_surrounded))
+                            + (["Non-smart"] * len(nonsmart_surrounded)),
+                }
+            )
+            df.loc[:, "popsize"] = popsize
+            df.loc[:, "num_smart"] = num_smart
+            dfs.append(df)
+
+    df = pd.concat(dfs)
+    # violin plot comparing smart vs non-smart for this popsize
+    fig, ax = plt.subplots()
+#    sns.stripplot(data=df, x="Type", y="Surroundedness", hue="Type",
+#    alpha=1.0, jitter=0.05, size=0.4, legend=False)
+#    print("swarmplot done")
+    sns.boxenplot(data=df, x="Surroundedness", y="popsize", hue="Type", width=0.4, gap=0)
+    print("boxplot done")
+#        sns.violinplot(
+#            data=df,
+#            x="popsize",
+#            y="Surroundedness",
+#            hue="Type",
+#            cut=0,
+#            inner="quartile",
+#            ax=ax,
+#            split=True
+#        )
+#        ax.set_title(f"Surroundedness: n={popsize}, d_1={num_smart}")
+    utilities.saveimg(fig, f"surroundedness_hungergames")
+
+
 if __name__ == "__main__":
-    run_data_analysis()
+    #run_data_analysis()
     #violinplot_tgs_and_area_by_pop()
+    run_surroundedness_analysis()

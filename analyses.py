@@ -100,6 +100,7 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
 
     return fig, ax
 
+                
 def compare_gpsize_area_relation():
     plot_data = {}
     for pop_size in config.ANALYSE_POP_SIZES:
@@ -109,42 +110,81 @@ def compare_gpsize_area_relation():
             files = measurements._files_for(pop_size, depth)
 
             for f in files:
-                data = measurements._read_data(f)  # Should be n×2×500 array
+                data = measurements._read_data(f)  # n×2×500 array
 
                 size_areas = measurements.extract_all_group_areas(data)
+                # each entry: [group_size, hull_area, exterior_prop]
                 plot_data[depth].extend(size_areas)
 
-    fig, ax = plt.subplots()
+    # Build one combined DataFrame with area + exterior proportion
     dfs = []
     for depth in config.ANALYSE_DEPTHS:
-        xs = [point[0] for point in plot_data[depth]]
-        ys = [point[1] for point in plot_data[depth]]
+        xs  = [point[0] for point in plot_data[depth]]
+        ysA = [point[1] for point in plot_data[depth]]  # area
+        ysP = [point[2] for point in plot_data[depth]]  # exterior proportion
 
-        df = pd.DataFrame({"Group Size": xs, "Group Area": ys})
-        df = df[df["Group Size"] < 35] #for better plotting
+        df = pd.DataFrame(
+            {
+                "Group Size": xs,
+                "Group Area": ysA,
+                "Proportion on Exterior": ysP,
+            }
+        )
+
+        # limit very large group sizes for plotting
+        df = df[df["Group Size"] < 35]
+
         df.loc[:, "Depth"] = f"$d_{depth}$"
         dfs.append(df)
 
-    df = pd.concat(dfs)
-    sns.pointplot(data=df,
+    df = pd.concat(dfs, ignore_index=True)
+
+    # ---------- Plot 1: area vs group size (as before) ----------
+    fig1, ax1 = plt.subplots()
+    sns.pointplot(
+        data=df,
         x="Group Size",
         y="Group Area",
         hue="Depth",
         estimator=np.median,
         linestyle=None,
         errorbar=("pi", 50),
-        ax=ax,
+        ax=ax1,
         markersize=3,
         err_kws={"alpha": 0.4, "linewidth": 0.8},
-        alpha= 0.6,
-        dodge=0.3
+        dodge=0.3,
+        alpha=0.6
     )
 
-    ax.set_yscale("log")
-    ax.set_xticks(ax.get_xticks()[2::5])
-    utilities.saveimg(fig, "gpsize_area_relation")
-            
-                
+    ax1.set_yscale("log")
+    # keep every 5th tick, starting around size 5 (adjust as needed)
+    ax1.set_xticks(ax1.get_xticks()[2::5])
+    utilities.saveimg(fig1, "gpsize_area_relation")
+
+    # ---------- Plot 2: exterior proportion vs group size ----------
+    # only from group size 5 onwards
+    df_prop = df[df["Group Size"] >= 5]
+
+    fig2, ax2 = plt.subplots()
+    sns.pointplot(
+        data=df_prop,
+        x="Group Size",
+        y="Proportion on Exterior",
+        hue="Depth",
+        estimator=np.median,
+        linestyle=None,
+        errorbar=("pi", 50),
+        ax=ax2,
+        markersize=3,
+        err_kws={"alpha": 0.4, "linewidth": 0.8},
+        dodge=0.3,
+        alpha=0.6,
+    )
+
+    ax2.set_ylabel("Proportion on Group Exterior")
+    ax2.set_ylim(0.0, 1.0)
+    ax2.set_xticks(ax2.get_xticks()[2::5])
+    utilities.saveimg(fig2, "gpsize_exterior_prop_relation")
 
 
 if __name__ == "__main__":

@@ -410,17 +410,24 @@ def extract_all_group_areas(
     T_REL_MIN: int = 40,
     T_REL_MAX: int = 200,
     dbscan_fn=dbscan,
-) -> list[float]:
+) -> list[list[float]]:
     """
     Across timepoints t in [T_REL_MIN, T_REL_MAX] (step=20), cluster individuals,
-    then compute convex-hull area for each non-noise group that:
+    then compute for each non-noise group that:
       - has at least 3 individuals, and
-      - does NOT touch the unit-square edge (via group_touches_edge).
+      - does NOT touch the unit-square edge (via group_touches_edge):
 
-    Returns a flat list of hull areas aggregated over all eligible groups/timepoints.
+        * group size
+        * convex-hull area
+        * proportion of individuals on the group exterior (hull vertices)
+
+    Returns
+    -------
+    list of [group_size, hull_area, exterior_prop] aggregated over all
+    eligible groups/timepoints.
     """
     assert dbscan_fn is not None
-    areas_all: list[float] = []
+    groups_all: list[list[float]] = []
 
     for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
         if t >= data.shape[2]:
@@ -436,7 +443,8 @@ def extract_all_group_areas(
                 continue  # noise
 
             group_idx = np.where(labels == label)[0]
-            if group_idx.size < 3:
+            group_size = group_idx.size
+            if group_size < 3:
                 continue  # hull area undefined / meaningless
 
             # Cluster-level edge condition: if any member touches, skip entire group
@@ -445,15 +453,107 @@ def extract_all_group_areas(
 
             pts = positions[group_idx]
 
-            # In 2D, ConvexHull.volume is the polygon area (and .area is perimeter).
             try:
                 hull = ConvexHull(pts)
-                areas_all.append([group_idx.size, float(hull.volume)])
+                hull_area = float(hull.volume)  # in 2D, volume == polygon area
+
+                # proportion of individuals that are hull vertices (exterior)
+                exterior_count = len(np.unique(hull.vertices))
+                exterior_prop = exterior_count / group_size
+
+                groups_all.append([group_size, hull_area, exterior_prop])
             except QhullError:
                 # Degenerate cases (e.g., collinear points) -> skip
                 continue
 
-    return areas_all
+    return groups_all
+
+def compute_surroundedness(
+    positions: np.ndarray,
+    dbscan_fn=dbscan,
+) -> np.ndarray:
+    """
+    Compute circumpolar-variance 'surroundedness' for each individual.
+
+    Steps:
+      i.   Cluster individuals using DBSCAN (dbscan_fn).
+      ii.  Ignore individuals in groups that touch the edge of the unit square
+           (via group_touches_edge; same logic as before).
+      iii. For each remaining individual, compute surroundedness relative to
+           its group-mates, defined as:
+
+                S_i = 1 - ( || sum_j v_ij || / n_i )
+
+           where v_ij is the unit vector from i to neighbour j, and n_i is the
+           number of neighbours (group-mates excluding i).
+
+    Rules:
+      - If an individual is noise (label == -1), surroundedness = NaN.
+      - If its group has fewer than 3 individuals, surroundedness = NaN.
+      - If its group touches the edge (per group_touches_edge), surroundedness = NaN.
+
+    Parameters
+    ----------
+    positions : np.ndarray
+        Array of shape (N, 2) with 2D positions in [0, 1] x [0, 1].
+    dbscan_fn : callable
+        Function mapping positions (N, 2) -> cluster labels (N,).
+
+    Returns
+    -------
+    surroundedness : np.ndarray
+        Array of shape (N,), float; NaN where undefined/ignored.
+    """
+    assert positions.ndim == 2 and positions.shape[1] == 2
+    assert dbscan_fn is not None
+
+    N = positions.shape[0]
+    labels = dbscan_fn(positions)         # shape (N,)
+    touched = group_touches_edge(positions, labels)  # shape (N,), bool
+
+    # Initialize all as NaN
+    surroundedness = np.full(N, np.nan, dtype=float)
+
+    # Loop over groups
+    for label in np.unique(labels):
+        if label == -1:
+            # Noise points: leave as NaN
+            continue
+
+        group_idx = np.where(labels == label)[0]
+        group_size = group_idx.size
+        if group_size < 10:
+            # Group too small: surroundedness undefined for all in this group
+            continue
+
+        # If the group touches the edge, ignore all its individuals (as before)
+        if np.any(touched[group_idx]):
+            continue
+
+        # For each focal in this group, compute circumpolar variance
+        for i in group_idx:
+            # neighbours = all group-mates except self
+            neighbours = group_idx[group_idx != i]
+            n_i = neighbours.size
+            if n_i == 0:
+                # Should not occur if group_size >= 3, but guard anyway
+                continue
+
+            # Vector from focal to each neighbour
+            diffs = positions[neighbours] - positions[i]          # (n_i, 2)
+            angles = np.arctan2(diffs[:, 1], diffs[:, 0])        # (n_i,)
+
+            # Unit vectors in those directions
+            unit_vectors = np.stack([np.cos(angles), np.sin(angles)], axis=1)  # (n_i, 2)
+
+            # Mean resultant vector length
+            vec_sum = np.sum(unit_vectors, axis=0)               # (2,)
+            r_bar = np.linalg.norm(vec_sum) / n_i
+
+            # Circumpolar variance: 1 - r_bar
+            surroundedness[i] = 1.0 - r_bar
+
+    return surroundedness
 
 if __name__ == "__main__":
     group_metrics = []
