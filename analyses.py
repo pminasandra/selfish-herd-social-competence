@@ -63,6 +63,7 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
 
     for pop_size in config.ANALYSE_POP_SIZES:
         for depth in config.ANALYSE_DEPTHS:
+            print(f"Analysing {ydesc} for {pop_size=} {depth=}")
             files = measurements._files_for(pop_size, depth)
             for f in files:
                 data = measurements._read_data(f)  # Should be n×2×500 array
@@ -105,6 +106,7 @@ def compare_gpsize_area_relation():
     plot_data = {}
     for pop_size in config.ANALYSE_POP_SIZES:
         for depth in config.ANALYSE_DEPTHS:
+            print(f"gpsize area centrality analysis {pop_size=} {depth=}")
             if depth not in plot_data:
                 plot_data[depth] = []
             files = measurements._files_for(pop_size, depth)
@@ -171,9 +173,9 @@ def compare_gpsize_area_relation():
         x="Group Size",
         y="Proportion on Exterior",
         hue="Depth",
-        estimator=np.median,
+        estimator=np.mean,
         linestyle=None,
-        errorbar=("pi", 50),
+        errorbar=("ci", 95),
         ax=ax2,
         markersize=3,
         err_kws={"alpha": 0.4, "linewidth": 0.8},
@@ -187,8 +189,125 @@ def compare_gpsize_area_relation():
     utilities.saveimg(fig2, "gpsize_exterior_prop_relation")
 
 
+def plot_group_size_ccdfs_displot(
+    T_REL_MIN: int = 40,
+    T_REL_MAX: int = 200,
+    dbscan_fn=measurements.dbscan,
+):
+    """
+    Plot complementary empirical CDFs of group sizes.
+
+    For each population size in config.ANALYSE_POP_SIZES and each depth in
+    config.ANALYSE_DEPTHS:
+
+      - Cluster individuals at timepoints t in [T_REL_MIN, T_REL_MAX] (step 20)
+        using `dbscan_fn`.
+      - For each DBSCAN cluster (label != -1), record its size and whether
+        that group touches the edge of the unit square (via group_touches_edge).
+      - Treat noise points (label == -1) as groups of size 1, and classify
+        them as edge-adjacent or not based on their own position.
+      - Aggregate all group sizes in a long DataFrame.
+
+    Then use seaborn.displot(kind="ecdf", complementary=True) to plot the
+    complementary ECDF (CCDF) of group sizes, with:
+
+        - 2 rows: groups that *do not* touch the edge (top),
+                  groups that *do* touch the edge (bottom)
+        - columns: one per population size
+        - hue: depth (config.ANALYSE_DEPTHS)
+    """
+    assert dbscan_fn is not None
+
+    rows = []
+    edge_threshold = 0.02  # consistent with group_touches_edge
+
+    for pop in config.ANALYSE_POP_SIZES:
+        for depth in config.ANALYSE_DEPTHS:
+            print(f"Collecting group sizes: n={pop}, depth={depth}")
+            files = measurements._files_for(pop, depth)
+            for f in files:
+                data = measurements._read_data(f)  # shape: (N, 2, T)
+                N, _, T = data.shape
+
+                for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+                    if t >= T:
+                        break
+
+                    positions = data[:, :, t]  # (N, 2)
+                    labels = dbscan_fn(positions)
+                    touches = measurements.group_touches_edge(positions, labels)  # (N,) bool
+
+                    # clustered groups
+                    for label in np.unique(labels):
+                        if label == -1:
+                            continue  # skip noise here
+
+                        group_idx = np.where(labels == label)[0]
+                        size = group_idx.size
+                        if size == 0:
+                            continue
+
+                        edge_adj = np.any(touches[group_idx])
+                        edge_status = "Yes" if edge_adj else "No"
+
+                        rows.append(
+                            {
+                                "Group size": size,
+                                "Population size": pop,
+                                "Depth": f"$d_{depth}$",
+                                "Edge-Adjacent": edge_status,
+                            }
+                        )
+
+                    # noise points as singleton groups (size 1)
+                    noise_idx = np.where(labels == -1)[0]
+                    if noise_idx.size > 0:
+                        pts = positions[noise_idx]
+                        on_edge = (
+                            (pts[:, 0] < edge_threshold)
+                            | (pts[:, 0] > 1 - edge_threshold)
+                            | (pts[:, 1] < edge_threshold)
+                            | (pts[:, 1] > 1 - edge_threshold)
+                        )
+                        for is_edge in on_edge:
+                            edge_status = "Yes" if is_edge else "No"
+                            rows.append(
+                                {
+                                    "Group size": 1,
+                                    "Population size": pop,
+                                    "Depth": f"$d_{depth}$",
+                                    "Edge-Adjacent": edge_status,
+                                }
+                            )
+
+    df_plot = pd.DataFrame(rows)
+    print(df_plot[df_plot["Edge-Adjacent"] == "Yes"].shape, df_plot.shape)
+
+    # --- displot: ECDF + complementary → CCDF ---
+    g = sns.displot(
+        data=df_plot,
+        x="Group size",
+        hue="Depth",
+        row="Population size",
+        col="Edge-Adjacent",
+        kind="ecdf",
+        complementary=True,  # CCDF: P(size >= s)
+        palette="colorblind",
+        height=3,
+        log_scale=(False, True),
+        aspect=1.2,
+    )
+
+    g.set_titles("")
+    g.set(ylim=(0, 1.0))
+    g.fig.subplots_adjust(top=0.9)
+
+    utilities.saveimg(g.fig, "group_size_ccdf_edge_vs_noedge_displot")
+
+
 if __name__ == "__main__":
-#    fig, ax = plt.subplots(figsize=(11.45, 4.921))
-#    make_violinplot(measurements.extract_all_group_sizes, ydesc="group size", fig=fig, ax=ax, palette="pastel")
-#    utilities.saveimg(fig, "vplot-group-sizes")
+    fig, ax = plt.subplots(figsize=(11.45, 4.921))
+    make_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
+    utilities.saveimg(fig, "vplot-polarisations")
     compare_gpsize_area_relation()
+    plot_group_size_ccdfs_displot()

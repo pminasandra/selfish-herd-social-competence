@@ -12,6 +12,7 @@ from os.path import join as joinpath
 import os
 import os.path
 import pickle
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -63,7 +64,7 @@ def group_touches_edge(data: np.ndarray, labels: np.ndarray) -> np.ndarray:
     Returns:
     - np.ndarray of shape (n,), dtype=bool
     """
-    edge_threshold = 0.01
+    edge_threshold = 0.02
     result = np.zeros(data.shape[0], dtype=bool)
 
     for label in np.unique(labels):
@@ -315,6 +316,9 @@ def extract_polarisations_exclude_edge(data: np.ndarray, T_REL_MIN=40, T_REL_MAX
         pos = positions_t[keep_mask]
         pos1 = positions_t1[keep_mask]
 
+        if pos.shape[0] == 0:
+#            warnings.warn("Encountered situation with no non-edge groups")
+            continue
         labels = dbscan_fn(pos)
 
         for label in np.unique(labels):
