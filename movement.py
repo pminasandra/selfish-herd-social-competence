@@ -165,67 +165,55 @@ def recursive_reasoning(locations, vor, desired_depth,
                                 orig_locations, curr_depth=curr_depth+1)
 
 
+def momentum_based_anticipatory_reasoning(locations, locations_before=None):
+    """
+    $\mu$ model. Performs anticipation not by using embedded models, instead uses
+    movement from last step to extrapolate future positions.
+    Args:
+        locations (np.array, n×2)
+        locations_before (np.array, n×2 | None): locations in last iteration. None if
+            this is the first iteration.
+    Returns:
+        np.array, new locations, same shape as locations
+    """
+
+    if locations_before is None:
+        future_locations = locations
+    else:
+        future_locations = locations + (locations - locations_before)
+
+    # bound to inside of unit square:
+    future_locations[0] = max(0.01, future_locations[0])
+    future_locations[0] = min(0.99, future_locations[0])
+    future_locations[1] = max(0.01, future_locations[1])
+    future_locations[1] = min(0.99, future_locations[1])
+
+    orig_locations = locations.copy()
+
+    new_updated_locs = []
+    # everyone then asks themselves one question:
+    for id_ in range(len(orig_locations)):
+    # 'if everyone else were in these new locations,
+    # where should I go?'
+
+        future_locations_with_me = future_locations.copy()
+        future_locations_with_me[id_] = orig_locations[id_]#i.e., everyone updated but me.
+
+        # then do the whole gradient descent business
+        new_vor = voronoi.get_bounded_voronoi(future_locations_with_me)
+        areas_new = voronoi.get_areas(future_locations_with_me, new_vor)
+        my_movement = -capped_grad(id_, future_locations_with_me, new_vor, areas_new)*\
+                            config.GRAD_DESC_MULTPL_FACTOR
+        my_future_location = future_locations_with_me[id_] + my_movement
+        my_future_location[0] = max(0.01, my_future_location[0])
+        my_future_location[0] = min(0.99, my_future_location[0])
+        my_future_location[1] = max(0.01, my_future_location[1])
+        my_future_location[1] = min(0.99, my_future_location[1])
+        new_updated_locs.append(my_future_location)
+
+    # after everyone has asked this question, store and return their new
+    # movement decisions.
+    return np.array(new_updated_locs)
+
 if __name__ == "__main__":
     pass
-#    locs = np.random.uniform(size=(30, 2))
-#    vor = voronoi.get_bounded_voronoi(locs)
-#
-#    fig, ax = plt.subplots(figsize=(4.0, 4.0), dpi=200)
-#    ax.set_xlim((-0.1, 1.1))
-#    ax.set_ylim((-0.1, 1.1))
-#    sc = ax.scatter(locs[:, 0], locs[:, 1], s=0.4)
-#
-#    def update(i):
-#        print(i, end="\033[K\r")
-#        global locs
-#        global vor
-#        global sc
-#        locs = recursive_reasoning(locs, vor, 2, locs)
-#        vor = voronoi.get_bounded_voronoi(locs)
-#        voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_width=0.3,
-#                        line_alpha=0.2, show_points=False)
-#
-#        sc.set_offsets(locs)
-#        ax.set_xlim((-0.1, 1.1))
-#        ax.set_ylim((-0.1, 1.1))
-#        ax.axvline(0, linestyle="dotted", linewidth=0.3)
-#        ax.axvline(1, linestyle="dotted", linewidth=0.3)
-#        ax.axhline(0, linestyle="dotted", linewidth=0.3)
-#        ax.axhline(1, linestyle="dotted", linewidth=0.3)
-#
-#    ani = FuncAnimation(fig, update, frames=200, interval=30)
-#    plt.show()
-#    ani.save("movement_d2.gif", writer="ffmpeg")
-
-
-
-# BELOW FUNCTIONS SEEM TO BE JUNK
-#def one_guy_one_recursion(id_, my_loc, vor, predicted_locations):
-#    predicted_locations_with_me = predicted_locations.copy()
-#    predicted_locations_with_me[id_] = my_loc
-#
-#    new_vor = voronoi.get_bounded_voronoi(predicted_locations_with_me)
-#    areas_new = voronoi.get_areas(predicted_locations_with_me, new_vor)
-#    movement = -capped_grad(id_, predicted_locations_with_me,
-#                        new_vor, areas_new)*config.GRAD_DESC_MULTPL_FACTOR
-#
-#    new_loc = my_loc + movement
-#    new_loc[0] = max(0.01, new_loc[0])
-#    new_loc[0] = min(0.99, new_loc[0])
-#    new_loc[1] = max(0.01, new_loc[1])
-#    new_loc[1] = min(0.99, new_loc[1])
-#
-#    return new_loc
-#
-#def group_one_recursion(locations, vor):
-#    predicted_locations = everyone_do_grad_descent(locations, vor)
-#    new_locs = []
-#    for id_ in range(len(locations)):
-#        my_loc = locations[id_, :]
-#        new_loc = one_guy_one_recursion(id_, my_loc, vor, predicted_locations)
-#
-#        new_locs.append(new_loc)
-#
-#    return np.array(new_locs)
-
-
