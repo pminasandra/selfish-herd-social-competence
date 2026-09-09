@@ -14,9 +14,9 @@ FIGURES = os.path.join(PROJECTROOT, "Figures")
 formats=['png', 'pdf', 'svg']
 
 # Program flow
-RUN_SIMS = True
+RUN_SIMS = False
 CONDUCT_HUNGERGAMES = False
-ANALYSE_DATA = False
+ANALYSE_DATA = True
 ANALYSE_HUNGERGAMES = False
 
 
@@ -51,7 +51,7 @@ HUNGERGAMES_TIME_LIMS = (250, 350)
 
 # Data analysis
 ANALYSE_POP_SIZES = [10, 25, 35, 50, 75, 87, 100]
-ANALYSE_DEPTHS = [0, 1, 2, 3]
+ANALYSE_DEPTHS = [0, 1, 2, 3, MU]
 
 #Miscellaneous
 SUPPRESS_INFORMATIVE_PRINT = False

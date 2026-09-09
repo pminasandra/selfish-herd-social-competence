@@ -12,10 +12,12 @@ import uuid
 
 import numpy as np
 
+import analyses
 import config
 import hungergames
 import measurements
 import selfishherd
+import utilities
 
 def runmodel(herd, filename):
     """
@@ -98,11 +100,17 @@ if __name__ == "__main__":
                 area_file = joinpath(config.DATA, "Results",
                                         f"areas-{pop_size}-d{depth}.csv")
                 
-                tgs_data = measurements.make_tgs_csv_for(pop_size, depth,
+                edge_data = measurements.make_edgeeffect_csv_for(pop_size, depth,
                                     timerange, eps=0.02)
-                tgs_data.to_csv(tgs_file, index=False)
-                
-                area_data = measurements.make_area_csv_for(pop_size,
-                                    depth, timerange)
-                area_data.to_csv(area_file, index=False)
-
+                edge_data.to_csv(tgs_file, index=False)
+# TODO: plot edge data again
+        fig, ax = plt.subplots(figsize=(11.45, 4.921))
+        analyses.make_violinplot(measurements.extract_polarisations_exclude_edge,
+                                    ydesc="polarisation",
+                                    fig=fig,
+                                    ax=ax,
+                                    palette="pastel"
+                                )
+        utilities.saveimg(fig, "vplot-polarisations")
+        analyses.compare_gpsize_area_relation()
+        analyses.plot_group_size_ccdfs_displot()
