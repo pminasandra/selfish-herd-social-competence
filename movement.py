@@ -183,10 +183,7 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None):
         future_locations = locations + (locations - locations_before)
 
     # bound to inside of unit square:
-    future_locations[0] = max(0.01, future_locations[0])
-    future_locations[0] = min(0.99, future_locations[0])
-    future_locations[1] = max(0.01, future_locations[1])
-    future_locations[1] = min(0.99, future_locations[1])
+    future_locations = np.clip(future_locations, 0.01, 0.99)
 
     orig_locations = locations.copy()
 

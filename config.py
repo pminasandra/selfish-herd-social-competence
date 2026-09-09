@@ -14,9 +14,9 @@ FIGURES = os.path.join(PROJECTROOT, "Figures")
 formats=['png', 'pdf', 'svg']
 
 # Program flow
-RUN_SIMS = False
+RUN_SIMS = True
 CONDUCT_HUNGERGAMES = False
-ANALYSE_DATA = True
+ANALYSE_DATA = False
 ANALYSE_HUNGERGAMES = False
 
 
@@ -26,15 +26,17 @@ GRAD_DESC_DY = 0.005
 GRAD_DESC_MAX_STEP_SIZE = 0.05
 GRAD_DESC_MULTPL_FACTOR = 0.1
 
-# Strucuring 
+# Strucuring
+MU = -1#momentum model
+
 POP_S_DOR = {
-10: [0, 1, 2, 3],
-25: [0, 1, 2, 3],
-50: [0, 1, 2, 3],
-35: [0, 1, 2, 3],
-75: [0, 1, 2, 3],
-87: [0, 1, 2, 3],
-100: [0, 1, 2, 3]
+ 10: [0, 1, 2, 3, MU],
+ 25: [0, 1, 2, 3, MU],
+ 50: [0, 1, 2, 3, MU],
+ 35: [0, 1, 2, 3, MU],
+ 75: [0, 1, 2, 3, MU],
+ 87: [0, 1, 2, 3, MU],
+100: [0, 1, 2, 3, MU]
 } 
 NUM_REPEATS = 500
 TMAX = 500

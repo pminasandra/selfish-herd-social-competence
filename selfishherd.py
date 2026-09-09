@@ -42,12 +42,21 @@ class SelfishHerd:
             t (int): how many iterations to update the model.
         """
 
-        for _ in range(t):
+        for timestep in range(t):
             locs = self.records.copy()[:,:,-1]
             vor = voronoi.get_bounded_voronoi(locs)
 
-            next_locs = movement.recursive_reasoning(locs, vor, self.depth,
-                                                        locs)
+            if self.depth >= 0:#cognitive, recursive anticipation
+                next_locs = movement.recursive_reasoning(locs, vor, self.depth,
+                                                            locs)
+            else:#momentum based, conventional anticipation
+                if timestep == 0:
+                    next_locs = movement.momentum_based_anticipatory_reasoning(locs,
+                                    None)
+                else:
+                    prev_locs = self.records.copy()[:,:,-2]
+                    next_locs = movement.momentum_based_anticipatory_reasoning(locs,
+                                    prev_locs)
             self.records = np.dstack((self.records, next_locs))
 
 

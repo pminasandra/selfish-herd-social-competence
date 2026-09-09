@@ -134,30 +134,13 @@ def _joinlists(lol1, lol2):
     return lol_res
 
 if __name__ == "__main__":
-    area_datasets = [[], []]
     for j in random.sample(range(500), 50):
         data = []
-        for i in [0, 1]:
-            tgt_file = measurements._files_for(50, i)
+        for i in [0, 1, -1]:
+            tgt_file = measurements._files_for(100, i)
             tgt_file = list(tgt_file)[j]
             tgt_file = measurements._read_data(tgt_file)
             data.append(tgt_file)
 
-        areas_data = []
-        for dataset in data:
-            areas_data.append(_extract_areas(dataset))
-
-
-        if len(area_datasets[0]) == 0:
-            area_datasets[0] = areas_data[0]
-            area_datasets[1] = areas_data[1]
-        else:
-#            print(len(area_datasets[0][0]))
-# this joining is fully improper
-# plan this properly
-            area_datasets[0] = _joinlists(area_datasets[0], areas_data[0])
-            area_datasets[1] = _joinlists(area_datasets[1], areas_data[1])
-
-    print("Initiating animations")
-    anim = animate_area_hists(area_datasets, delay=0.5)
-    save_animation(anim, f"hist_50.gif")
+    ani = animate_data(data, tmax=300, delay=2)
+    save_animation(ani, "mu-model-comp.gif")
