@@ -2,14 +2,12 @@
 # pminasandra.github.io
 # December 09, 2024
 
-import os
-import os.path
-
+from pathlib import Path
 
 #Directories
-PROJECTROOT = open(".cw", "r").read().rstrip()
-DATA = os.path.join(PROJECTROOT, "Data")
-FIGURES = os.path.join(PROJECTROOT, "Figures")
+PROJECTROOT = Path(open(".cw", "r").read().rstrip())
+DATA = PROJECTROOT / "Data"
+FIGURES = PROJECTROOT / "Figures"
 
 formats=['png', 'pdf', 'svg']
 

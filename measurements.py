@@ -35,7 +35,7 @@ def _read_data(filename):
     with open(filename, "rb") as file_obj:
         return pickle.load(file_obj)
 
-def dbscan(positions, eps=0.005):
+def dbscan(positions, eps=0.02):
     """
     Given an iterable of individual positions, returns DBSCAN labels for each.
     Args:
@@ -108,7 +108,8 @@ def typical_group_size(group_sizes):
     return (group_sizes**2).sum()/group_sizes.sum()
 
 
-def extract_all_group_sizes(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200, dbscan_fn=dbscan) -> list:
+def extract_all_group_sizes(data: np.ndarray, T_REL_MIN=40,
+                                T_REL_MAX=200, T_GAP=20, dbscan_fn=dbscan):
     """
     Collects all group sizes between t=T_REL_MIN and t=T_REL_MAX (inclusive)
     in steps of 20 using DBSCAN clustering.
@@ -123,7 +124,7 @@ def extract_all_group_sizes(data: np.ndarray, T_REL_MIN=40, T_REL_MAX=200, dbsca
     assert dbscan_fn is not None
     group_sizes_all = []
 
-    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+    for t in range(T_REL_MIN, T_REL_MAX + 1, T_GAP):
         if t >= data.shape[2]:
             break
 
@@ -413,7 +414,9 @@ def extract_all_group_areas(
     data: np.ndarray,
     T_REL_MIN: int = 40,
     T_REL_MAX: int = 200,
+    T_GAP: int = 20,
     dbscan_fn=dbscan,
+    exclude_small_groups=True
 ) -> list[list[float]]:
     """
     Across timepoints t in [T_REL_MIN, T_REL_MAX] (step=20), cluster individuals,
@@ -433,7 +436,7 @@ def extract_all_group_areas(
     assert dbscan_fn is not None
     groups_all: list[list[float]] = []
 
-    for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
+    for t in range(T_REL_MIN, T_REL_MAX + 1, T_GAP):
         if t >= data.shape[2]:
             break
 
@@ -448,7 +451,7 @@ def extract_all_group_areas(
 
             group_idx = np.where(labels == label)[0]
             group_size = group_idx.size
-            if group_size < 3:
+            if group_size < 3 and exclude_small_groups:
                 continue  # hull area undefined / meaningless
 
             # Cluster-level edge condition: if any member touches, skip entire group
@@ -465,7 +468,7 @@ def extract_all_group_areas(
                 exterior_count = len(np.unique(hull.vertices))
                 exterior_prop = exterior_count / group_size
 
-                groups_all.append([group_size, hull_area, exterior_prop])
+                groups_all.append([group_size, hull_area, exterior_prop, t])
             except QhullError:
                 # Degenerate cases (e.g., collinear points) -> skip
                 continue
