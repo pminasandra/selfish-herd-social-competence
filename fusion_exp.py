@@ -9,13 +9,19 @@ Potential mechanistic explanation for why groups form.
 import multiprocessing as mp
 import uuid
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 import config
 import measurements
 from selfishherd import SelfishHerd as herd
 import utilities
+
+# PROGRAM FLOW
+RUN_SIMS = False
+ANALYSE_OUTPUT = True
 
 depths_tested = [0, 1, 2, 3, config.MU]
 pop_sizes_tested = [50]
@@ -79,6 +85,7 @@ def collision_trial(n, depth, t_max):
 
 
 def _mp_helper(pop_size, depth, t_max):
+    np.random.seed()
     trajs = collision_trial(pop_size, depth, t_max)
     recs = measurements.extract_all_group_areas(trajs, 0, t_max, 10)
     recs = pd.DataFrame(recs, columns=["group_size", "area", "exterior", "timestamp"])
@@ -89,14 +96,62 @@ def _mp_helper(pop_size, depth, t_max):
     print(pop_size, depth, t_max, "done!")
     
 
-if __name__ == "__main__":
-    params = [
-                        (pop_size, depth, t_max) for n in range(n_repeats)
-                    for depth in depths_tested
-                for pop_size in pop_sizes_tested]
-    print(params)
+def _load_fusion_files_for(pop_size, depth):
+    fdir = fusion_exp_dir / f"{pop_size}" / f"d{depth}"
+    dfs = [pd.read_parquet(f) for f in fdir.glob("*.parquet")]
+    return dfs
 
-    pool = mp.Pool()
-    pool.starmap(_mp_helper, params)
-    pool.close()
-    pool.join()
+
+def make_plot(dfs_by_d):
+    plot_data = pd.concat([
+        pd.concat(dfs, keys=range(len(dfs)), names=["replicate"])
+          .reset_index(level="replicate")
+          .assign(d=d)
+        for d, dfs in dfs_by_d.items()
+    ])
+
+# Rename only for display
+    plot_data["d"] = plot_data["d"].replace({"d-1": r"$d_\mu$"})
+
+    fig, ax = plt.subplots()
+
+    sns.lineplot(
+        data=plot_data,
+        x="timestamp",
+        y="group_size",
+        hue="d",
+        estimator="mean",
+        errorbar=("ci", 95),
+        ax=ax,
+    )
+
+    ax.set_xlabel("Timestamp")
+    ax.set_ylabel("Average group size")
+    ax.set_ylim((15, 60))
+    plt.tight_layout()
+
+    return fig, ax
+
+
+if __name__ == "__main__":
+    if RUN_SIMS:
+        params = [
+                            (pop_size, depth, t_max) for n in range(n_repeats)
+                        for depth in depths_tested
+                    for pop_size in pop_sizes_tested]
+        print(params)
+
+        pool = mp.Pool()
+        pool.starmap(_mp_helper, params)
+        pool.close()
+        pool.join()
+
+    if ANALYSE_OUTPUT:
+        dfs_by_d = {}
+        for pop_size in pop_sizes_tested:
+            for depth in depths_tested:
+                dfs_by_d[f"d{depth}"] = _load_fusion_files_for(pop_size, depth)
+
+            fig, ax = make_plot(dfs_by_d)
+            utilities.saveimg(fig, f"fusion_graph_{pop_size}")
+            plt.close(fig)
