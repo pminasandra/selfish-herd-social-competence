@@ -20,7 +20,7 @@ import selfishherd
 import utilities
 import voronoi
 
-def hungergame(init_locs, num_smart):
+def hungergame(init_locs, num_smart, only_momentum_anticipation=False):
     """
     Sets up an individual contest, starting a smart selfish herd
     of n individuals, of which the first num_smart are d_1 and the rest
@@ -29,6 +29,8 @@ def hungergame(init_locs, num_smart):
     Args:
         init_locs (n×2 array-like): initial locations of agents
         num_smart (int): how many d1 individuals
+        only_momentum_anticipation (bool): whether agents use d_1 or d_\mu anticipation.
+            True for d_\mu.
     Returns:
         selfishherd.SelfishHerd,
         fname (str)
@@ -36,17 +38,23 @@ def hungergame(init_locs, num_smart):
 
     num_inds = init_locs.shape[0]
     depths = np.zeros(num_inds).astype(int)
-    depths[:num_smart] += 1
+    if not only_momentum_anticipation:
+        depths[:num_smart] += 1
+    else:
+        depths[:num_smart] = config.MU
 
     herd = selfishherd.SelfishHerd(num_inds, depths, init_locs)
     uname = str(uuid.uuid4())
+    ftag = "embedded"
+    if only_momentum_anticipation:
+        ftag = "momentum"
     fname = joinpath(config.DATA, "HungerGames",
-                f"{num_inds}-n{num_smart}-{uname}.pkl")
+                f"{ftag}-{num_inds}-n{num_smart}-{uname}.pkl")
 
     return herd, fname
 
 
-def hungergames(popsize, num_smart, num_instances):
+def hungergames(popsize, num_smart, num_instances, only_momentum_anticipation=False):
     """
     *GENERATOR*
     Wrapper around hungergame(...)
@@ -58,14 +66,19 @@ def hungergames(popsize, num_smart, num_instances):
 
     for i in range(num_instances):
         init_locs = np.random.uniform(size=(popsize, 2))
-        herd, fname = hungergame(init_locs, num_smart)
+        herd, fname = hungergame(init_locs, num_smart,
+                    only_momentum_anticipation=only_momentum_anticipation)
 
         yield herd, fname
 
 
-def _hungergames_files_for(popsize, num_smart):
+def _hungergames_files_for(popsize, num_smart, only_momentum_anticipation=False):
+    ftag = "embedded"
+    if only_momentum_anticipation:
+        ftag = "momentum"
+
     datadir = joinpath(config.DATA, "HungerGames")
-    fformat = f"{popsize}-n{num_smart}-*.pkl"
+    fformat = f"{ftag}-{popsize}-n{num_smart}-*.pkl"
 
     files = glob.glob(joinpath(datadir, fformat))
 
@@ -162,7 +175,7 @@ def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
         print(f"Permutation {i+1} of {num_perms}", end="\033[K\r")
         yield permutation(all_datasets, rel_indices, metricfunc)
 
-def run_data_analysis():
+def run_data_analysis(only_momentum_anticipation=False):
     """
     Runs above analyses on simulated hungergames data.
     """
@@ -174,7 +187,8 @@ def run_data_analysis():
     for popsize in config.POP_S_SMART_GUYS_HG:
         for num_smart in [5]: #NOTE: CAN CHANGE AS YOU LIKE
             print(f"Analysing n={popsize}, d_1={num_smart}.")
-            files = _hungergames_files_for(popsize, num_smart)
+            files = _hungergames_files_for(popsize, num_smart,
+                                    only_momentum_anticipation)
             alldata = [_read_hungergames_data(file_) for file_ in files]
 
             rel_indices = list(range(0, num_smart))
@@ -200,278 +214,14 @@ def run_data_analysis():
             df.append([popsize, num_smart,
                         true_area_metric, area_p_val])
 
+    ftag = "embedded"
+    if only_momentum_anticipation:
+        ftag = "momentum"
     import pandas as pd
     df = pd.DataFrame(df, columns=colnames)
-    df.to_csv(joinpath(config.DATA, "hungergames-results.csv"), index=False)
+    df.to_csv(joinpath(config.DATA, f"{ftag}-hungergames-results.csv"), index=False)
 
-
-def violinplot_tgs_and_area_by_pop():
-    records = []
-    for popsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in [5]:  # Adjust if needed
-            files = _hungergames_files_for(popsize, num_smart)
-            for f in files:
-                try:
-                    data = _read_hungergames_data(f)
-                    rel_indices = list(range(num_smart))
-
-                    tgs_d0, tgs_d1 = extract_groupsizes(data, rel_indices)
-                    area_d0, area_d1 = extract_areas(data, rel_indices)
-
-                    records.extend([
-                        {"metric": "TGS", "type": "d_0", "value": tgs_d0, "pop_size": popsize},
-                        {"metric": "TGS", "type": "d_1", "value": tgs_d1, "pop_size": popsize},
-                        {"metric": "Area", "type": "d_0", "value": area_d0, "pop_size": popsize},
-                        {"metric": "Area", "type": "d_1", "value": area_d1, "pop_size": popsize},
-                    ])
-                except Exception as e:
-                    print(f"Skipping {f}: {e}")
-
-    df = pd.DataFrame(records)
-
-    # Plot setup
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5), sharey=False)
-    sns.set(style="whitegrid")
-
-    for i, metric in enumerate(["TGS", "Area"]):
-        ax = axs[i]
-        sns.violinplot(
-            data=df[df["metric"] == metric],
-            x="pop_size", y="value", hue="type",
-            ax=ax, inner="box", palette="pastel", cut=0, dodge=True
-        )
-        ax.set_title(metric)
-        ax.set_xlabel("Population size")
-        ax.set_ylabel(metric)
-        ax.set_ylabel("")
-        ax.legend(title="Type", labels=["$d_0$", "$d_1$"], fontsize="small", title_fontsize="small")
-
-    plt.tight_layout()
-    utilities.saveimg(fig, "vplot-hungergames")
-
-def run_surroundedness_analysis(
-    T_REL_MIN: int = 40,
-    T_REL_MAX: int = 200,
-    dbscan_fn=measurements.dbscan,
-):
-    """
-    For each pop size and num_smart (currently [5]), load all hungergames data,
-    subsample the same timestamps as in the area/size analyses, compute
-    circumpolar-variance surroundedness for each individual, and collect
-    surroundedness values separately for smart (IDs [0:num_smart]) and
-    non-smart (IDs [num_smart:]) individuals.
-
-    For each pop_size, produces a violin plot comparing the distributions of
-    surroundedness for smart vs non-smart individuals.
-    """
-    dfs = []
-    for popsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in [5]:  # can extend this list later
-            print(f"Analysing surroundedness: n={popsize}, d_1={num_smart}.")
-            files = _hungergames_files_for(popsize, num_smart)
-            alldata = [_read_hungergames_data(file_) for file_ in files]  # list of (N, 2, T)
-
-            smart_surrounded = []
-            nonsmart_surrounded = []
-
-            for data in alldata:
-                # data: (N, 2, T)
-                N, _, T = data.shape
-
-                # time subsampling as in extract_all_group_areas / extract_all_group_sizes
-                for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
-                    if t >= T:
-                        break
-
-                    positions_t = data[:, :, t]  # (N, 2)
-
-                    # compute surroundedness at this time
-                    surr = measurements.compute_surroundedness(positions_t, dbscan_fn=dbscan_fn)  # (N,)
-
-                    # split smart vs non-smart, filter NaNs
-                    smart_idx = np.arange(num_smart)
-                    nonsmart_idx = np.arange(num_smart, N)
-
-                    smart_vals = surr[smart_idx]
-                    nonsmart_vals = surr[nonsmart_idx]
-
-                    smart_vals = smart_vals[~np.isnan(smart_vals)]
-                    nonsmart_vals = nonsmart_vals[~np.isnan(nonsmart_vals)]
-
-                    if smart_vals.size > 0:
-                        smart_surrounded.extend(smart_vals.tolist())
-                    if nonsmart_vals.size > 0:
-                        nonsmart_surrounded.extend(nonsmart_vals.tolist())
-
-            # build DataFrame for this popsize / num_smart
-            df = pd.DataFrame(
-                {
-                    "Surroundedness": smart_surrounded + nonsmart_surrounded,
-                    "Type": (["Smart"] * len(smart_surrounded))
-                            + (["Non-smart"] * len(nonsmart_surrounded)),
-                }
-            )
-            df.loc[:, "popsize"] = popsize
-            df.loc[:, "num_smart"] = num_smart
-            dfs.append(df)
-
-    df = pd.concat(dfs)
-    print(df, "\n", df.shape)
-    # violin plot comparing smart vs non-smart for this popsize
-    fig, ax = plt.subplots()
-#    sns.stripplot(data=df, x="Type", y="Surroundedness", hue="Type",
-#    alpha=1.0, jitter=0.05, size=0.4, legend=False)
-#    print("swarmplot done")
-#    sns.boxplot(data=df, x="Surroundedness", y="popsize", hue="Type", width=0.4, gap=0)
-#    print("boxplot done")
-    sns.violinplot(
-        data=df,
-        x="popsize",
-        y="Surroundedness",
-        hue="Type",
-        cut=0,
-        inner="quartile",
-        ax=ax,
-        split=True
-    )
-#        ax.set_title(f"Surroundedness: n={popsize}, d_1={num_smart}")
-    utilities.saveimg(fig, f"surroundedness_hungergames")
-    print("figure saved")
-
-
-def run_interior_probability_analysis(
-    T_REL_MIN: int = 40,
-    T_REL_MAX: int = 200,
-    dbscan_fn=measurements.dbscan,
-):
-    """
-    For each population size and num_smart (currently [5]), load all hungergames
-    data, subsample timestamps as in earlier analyses, and estimate the
-    probability that smart vs non-smart individuals are in the *group interior*.
-
-    Interior is defined per timepoint as:
-        - DBSCAN group of the focal,
-        - group size >= 4 (otherwise hull has no interior),
-        - group does NOT touch the edge (via group_touches_edge),
-        - focal individual is NOT a vertex of that group's convex hull.
-
-    For each popsize, this function:
-        - tallies interior vs total eligible appearances for smart and non-smart,
-        - estimates p_interior for each type,
-        - and produces a simple bar plot (Smart vs Non-smart).
-    """
-
-    results = []  # to store summary numbers per (popsize, num_smart)
-
-    for popsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in [5]:  # extend this list if needed
-            print(f"Analysing interior probability: n={popsize}, d_1={num_smart}.")
-            files = _hungergames_files_for(popsize, num_smart)
-            alldata = [_read_hungergames_data(file_) for file_ in files]  # list of (N, 2, T)
-
-            smart_interior = 0
-            smart_total = 0
-            nonsmart_interior = 0
-            nonsmart_total = 0
-
-            for data in alldata:
-                N, _, T = data.shape
-                smart_idx = np.arange(num_smart)
-                nonsmart_idx = np.arange(num_smart, N)
-
-                # time subsampling as before
-                for t in range(T_REL_MIN, T_REL_MAX + 1, 20):
-                    if t >= T:
-                        break
-
-                    positions_t = data[:, :, t]  # (N, 2)
-                    labels = dbscan_fn(positions_t)
-                    touches = measurements.group_touches_edge(positions_t, labels)
-
-                    # loop over groups
-                    for label in np.unique(labels):
-                        if label == -1:
-                            continue  # noise
-
-                        group_indices = np.where(labels == label)[0]
-                        group_size = group_indices.size
-
-                        if group_size < 10:
-                            continue
-
-                        # skip groups that touch the arena edge
-                        if np.any(touches[group_indices]):
-                            continue
-
-                        pts = positions_t[group_indices]
-
-                        try:
-                            hull = ConvexHull(pts)
-                        except QhullError:
-                            # degenerate geometry: no well-defined hull interior
-                            continue
-
-                        hull_local = np.unique(hull.vertices)
-                        hull_global = group_indices[hull_local]
-
-                        # interior indices = group minus hull vertices
-                        interior_global = np.setdiff1d(group_indices, hull_global, assume_unique=True)
-                        if interior_global.size == 0:
-                            # no interior individuals in this group
-                            continue
-
-                        # smart / non-smart counts within this group
-                        smart_in_group = np.intersect1d(group_indices, smart_idx, assume_unique=True)
-                        nonsmart_in_group = np.intersect1d(group_indices, nonsmart_idx, assume_unique=True)
-
-                        # eligible appearances: all group members of each type
-                        smart_total += smart_in_group.size
-                        nonsmart_total += nonsmart_in_group.size
-
-                        # interior appearances: intersection with interior set
-                        smart_interior += np.intersect1d(interior_global, smart_in_group, assume_unique=True).size
-                        nonsmart_interior += np.intersect1d(interior_global, nonsmart_in_group, assume_unique=True).size
-
-            # estimate probabilities (guard against division by zero)
-            p_smart = smart_interior / smart_total if smart_total > 0 else np.nan
-            p_nonsmart = nonsmart_interior / nonsmart_total if nonsmart_total > 0 else np.nan
-
-            print(f"Smart interior: {smart_interior}/{smart_total} -> p={p_smart:.3f}")
-            print(f"Non-smart interior: {nonsmart_interior}/{nonsmart_total} -> p={p_nonsmart:.3f}")
-
-            results.append({
-                "popsize": popsize,
-                "num_smart": num_smart,
-                "p_smart_interior": p_smart,
-                "p_nonsmart_interior": p_nonsmart,
-                "smart_interior": smart_interior,
-                "smart_total": smart_total,
-                "nonsmart_interior": nonsmart_interior,
-                "nonsmart_total": nonsmart_total,
-            })
-
-            # --- simple bar plot for this (popsize, num_smart) ---
-            fig, ax = plt.subplots()
-            ax.bar(
-                ["Smart", "Non-smart"],
-                [p_smart, p_nonsmart],
-                color=["tab:blue", "tab:orange"],
-            )
-            ax.set_ylim(0, 1)
-            ax.set_ylabel("P(Interior | eligible)")
-            ax.set_title(f"Interior probability: n={popsize}, d_1={num_smart}")
-            utilities.saveimg(fig, f"interior_prob_n{popsize}_d{num_smart}")
-
-    # optional: save summary table
-    results_df = pd.DataFrame(results)
-    results_df.to_csv(
-        joinpath(config.DATA, "hungergames-interior-probabilities.csv"),
-        index=False,
-    )
 
 
 if __name__ == "__main__":
-    #run_data_analysis()
-    #violinplot_tgs_and_area_by_pop()
-    run_surroundedness_analysis()
-    run_interior_probability_analysis()
+    run_data_analysis()

@@ -20,15 +20,15 @@ from selfishherd import SelfishHerd as herd
 import utilities
 
 # PROGRAM FLOW
-RUN_SIMS = False
+RUN_SIMS = True
 ANALYSE_OUTPUT = True
 
 depths_tested = [0, 1, 2, 3, config.MU]
-pop_sizes_tested = [50]
+pop_sizes_tested = [30]
 n_repeats = 100
 init_intergroup_dist = 0.3
 init_group_spread = 0.01
-t_max = 500
+t_max = 350
 
 fusion_exp_dir = config.DATA / "Fusion_Exp"
 
@@ -127,7 +127,7 @@ def make_plot(dfs_by_d):
 
     ax.set_xlabel("Timestamp")
     ax.set_ylabel("Average group size")
-    ax.set_ylim((15, 60))
+    ax.set_ylim((pop_size//2 - 5, pop_size + 5))
     plt.tight_layout()
 
     return fig, ax
@@ -150,7 +150,8 @@ if __name__ == "__main__":
         dfs_by_d = {}
         for pop_size in pop_sizes_tested:
             for depth in depths_tested:
-                dfs_by_d[f"d{depth}"] = _load_fusion_files_for(pop_size, depth)
+                dfs = _load_fusion_files_for(pop_size, depth)
+                dfs_by_d[f"d{depth}"] = dfs
 
             fig, ax = make_plot(dfs_by_d)
             utilities.saveimg(fig, f"fusion_graph_{pop_size}")

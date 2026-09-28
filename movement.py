@@ -165,7 +165,8 @@ def recursive_reasoning(locations, vor, desired_depth,
                                 orig_locations, curr_depth=curr_depth+1)
 
 
-def momentum_based_anticipatory_reasoning(locations, locations_before=None):
+def momentum_based_anticipatory_reasoning(locations, locations_before=None,
+                            depth=config.MU):
     """
     $\mu$ model. Performs anticipation not by using embedded models, instead uses
     movement from last step to extrapolate future positions.
@@ -173,6 +174,9 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None):
         locations (np.array, n×2)
         locations_before (np.array, n×2 | None): locations in last iteration. None if
             this is the first iteration.
+        depth (int or array-like): 'depth' of anticipation for each animal. 0 for no
+            anticipation, config.MU for momentum-based anticipation.
+    
     Returns:
         np.array, new locations, same shape as locations
     """
@@ -187,9 +191,19 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None):
 
     orig_locations = locations.copy()
 
-    new_updated_locs = []
-    # everyone then asks themselves one question:
-    for id_ in range(len(orig_locations)):
+    vor = voronoi.get_bounded_voronoi(locations)
+    base_new_locs = everyone_do_grad_descent(orig_locations, vor)
+
+    new_updated_locs = base_new_locs.copy()
+
+    # who all are capable of anticipation?
+    if isinstance(depth, int):
+        if depth == config.MU:
+            capable_inds = list(range(len(orig_locations)))
+    else:
+        capable_inds = np.where(depth == config.MU)
+    # everyone capable then asks themselves one question:
+    for id_ in capable_inds:
     # 'if everyone else were in these new locations,
     # where should I go?'
 
@@ -206,7 +220,7 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None):
         my_future_location[0] = min(0.99, my_future_location[0])
         my_future_location[1] = max(0.01, my_future_location[1])
         my_future_location[1] = min(0.99, my_future_location[1])
-        new_updated_locs.append(my_future_location)
+        new_updated_locs[id_] = my_future_location
 
     # after everyone has asked this question, store and return their new
     # movement decisions.
