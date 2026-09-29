@@ -110,28 +110,28 @@ def simulate_all_hungergames():
     for popsize in config.POP_S_SMART_GUYS_HG:
         for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
             # First the normal hunger-games
-#            print(f"Ordinary hunger-games for d1 invading d0. {popsize=}")
-#            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
-#                        only_momentum_anticipation=False,
-#                        reverse=False)
-#
-#            pool = mp.Pool()
-#            pool.starmap(runmodel, contests)
-#            pool.close()
-#            pool.join()
-#            del pool
-#
-#            # Then with the roles reversed
-#            print(f"Reversed hunger-games for d1 invading d0. {popsize=}")
-#            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
-#                        only_momentum_anticipation=False,
-#                        reverse=True)
-#
-#            pool = mp.Pool()
-#            pool.starmap(runmodel, contests)
-#            pool.close()
-#            pool.join()
-#            del pool
+            print(f"Ordinary hunger-games for d1 invading d0. {popsize=}")
+            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+                        only_momentum_anticipation=False,
+                        reverse=False)
+
+            pool = mp.Pool()
+            pool.starmap(runmodel, contests)
+            pool.close()
+            pool.join()
+            del pool
+
+            # Then with the roles reversed
+            print(f"Reversed hunger-games for d1 invading d0. {popsize=}")
+            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+                        only_momentum_anticipation=False,
+                        reverse=True)
+
+            pool = mp.Pool()
+            pool.starmap(runmodel, contests)
+            pool.close()
+            pool.join()
+            del pool
 
             # Then with momentun only
             print(f"Ordinary hunger-games for d_\mu invading d0. {popsize=}")
