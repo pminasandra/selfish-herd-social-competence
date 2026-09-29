@@ -4,6 +4,7 @@
 
 import glob
 from os.path import join as joinpath
+import multiprocessing as mp
 import pickle
 import uuid
 
@@ -20,7 +21,9 @@ import selfishherd
 import utilities
 import voronoi
 
-def hungergame(init_locs, num_smart, only_momentum_anticipation=False):
+def hungergame(init_locs, num_smart,
+                only_momentum_anticipation=False,
+                reverse=False):
     """
     Sets up an individual contest, starting a smart selfish herd
     of n individuals, of which the first num_smart are d_1 and the rest
@@ -31,6 +34,7 @@ def hungergame(init_locs, num_smart, only_momentum_anticipation=False):
         num_smart (int): how many d1 individuals
         only_momentum_anticipation (bool): whether agents use d_1 or d_\mu anticipation.
             True for d_\mu.
+        reverse (bool): whether roles of d_0 and d_1/d_\mu agents should be swapped.
     Returns:
         selfishherd.SelfishHerd,
         fname (str)
@@ -39,22 +43,35 @@ def hungergame(init_locs, num_smart, only_momentum_anticipation=False):
     num_inds = init_locs.shape[0]
     depths = np.zeros(num_inds).astype(int)
     if not only_momentum_anticipation:
-        depths[:num_smart] += 1
+        if not reverse:
+            depths[:num_smart] = 1
+        else:
+            depths[num_smart:] = 1
     else:
-        depths[:num_smart] = config.MU
+        if not reverse:
+            depths[:num_smart] = config.MU
+        else:
+            depths[num_smart:] = config.MU
 
     herd = selfishherd.SelfishHerd(num_inds, depths, init_locs)
     uname = str(uuid.uuid4())
     ftag = "embedded"
     if only_momentum_anticipation:
         ftag = "momentum"
+
+    revtag = "noreverse"
+    if reverse:
+        revtag = "reverse"
+
     fname = joinpath(config.DATA, "HungerGames",
-                f"{ftag}-{num_inds}-n{num_smart}-{uname}.pkl")
+                f"{ftag}-{revtag}-{num_inds}-n{num_smart}-{uname}.pkl")
 
     return herd, fname
 
 
-def hungergames(popsize, num_smart, num_instances, only_momentum_anticipation=False):
+def hungergames(popsize, num_smart, num_instances,
+                    only_momentum_anticipation=False,
+                    reverse=False):
     """
     *GENERATOR*
     Wrapper around hungergame(...)
@@ -62,23 +79,100 @@ def hungergames(popsize, num_smart, num_instances, only_momentum_anticipation=Fa
         popsize (int): population size
         num_smart (int): number of d_1 inds
         num_instances (int): how many simulations are needed
+        only_momentum_anticipation (bool): whether agents use d_1 or d_\mu anticipation.
+            True for d_\mu.
+        reverse (bool): whether roles of d_0 and d_1/d_\mu agents should be swapped.
     """
 
     for i in range(num_instances):
         init_locs = np.random.uniform(size=(popsize, 2))
         herd, fname = hungergame(init_locs, num_smart,
-                    only_momentum_anticipation=only_momentum_anticipation)
+                    only_momentum_anticipation=only_momentum_anticipation,
+                    reverse=reverse)
 
         yield herd, fname
 
 
-def _hungergames_files_for(popsize, num_smart, only_momentum_anticipation=False):
+def runmodel(herd, filename):
+    """
+    parallelization helper function
+    """
+    np.random.seed()
+    herd.run(config.TMAX)
+    herd.savedata(filename)
+
+
+def simulate_all_hungergames():
+    """
+    *WRAPPER*
+    Runs all simulations needed for the paper.
+    """
+    for popsize in config.POP_S_SMART_GUYS_HG:
+        for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
+            # First the normal hunger-games
+#            print(f"Ordinary hunger-games for d1 invading d0. {popsize=}")
+#            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+#                        only_momentum_anticipation=False,
+#                        reverse=False)
+#
+#            pool = mp.Pool()
+#            pool.starmap(runmodel, contests)
+#            pool.close()
+#            pool.join()
+#            del pool
+#
+#            # Then with the roles reversed
+#            print(f"Reversed hunger-games for d1 invading d0. {popsize=}")
+#            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+#                        only_momentum_anticipation=False,
+#                        reverse=True)
+#
+#            pool = mp.Pool()
+#            pool.starmap(runmodel, contests)
+#            pool.close()
+#            pool.join()
+#            del pool
+
+            # Then with momentun only
+            print(f"Ordinary hunger-games for d_\mu invading d0. {popsize=}")
+            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+                        only_momentum_anticipation=True,
+                        reverse=False)
+
+            pool = mp.Pool()
+            pool.starmap(runmodel, contests)
+            pool.close()
+            pool.join()
+            del pool
+
+            # Then momentum only + roled reversed
+            print(f"Reversed hunger-games for d_\mu invading d0. {popsize=}")
+            contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
+                        only_momentum_anticipation=True,
+                        reverse=True)
+
+            pool = mp.Pool()
+            pool.starmap(runmodel, contests)
+            pool.close()
+            pool.join()
+            del pool
+
+
+
+def _hungergames_files_for(popsize, num_smart,
+                    only_momentum_anticipation=False,
+                    reverse=False):
+
     ftag = "embedded"
     if only_momentum_anticipation:
         ftag = "momentum"
 
+    revtag = "noreverse"
+    if reverse:
+        revtag = "reverse"
+
     datadir = joinpath(config.DATA, "HungerGames")
-    fformat = f"{ftag}-{popsize}-n{num_smart}-*.pkl"
+    fformat = f"{ftag}-{revtag}-{popsize}-n{num_smart}-*.pkl"
 
     files = glob.glob(joinpath(datadir, fformat))
 
@@ -175,7 +269,7 @@ def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
         print(f"Permutation {i+1} of {num_perms}", end="\033[K\r")
         yield permutation(all_datasets, rel_indices, metricfunc)
 
-def run_data_analysis(only_momentum_anticipation=False):
+def run_data_analysis(only_momentum_anticipation=False, reverse=False):
     """
     Runs above analyses on simulated hungergames data.
     """
@@ -188,7 +282,8 @@ def run_data_analysis(only_momentum_anticipation=False):
         for num_smart in [5]: #NOTE: CAN CHANGE AS YOU LIKE
             print(f"Analysing n={popsize}, d_1={num_smart}.")
             files = _hungergames_files_for(popsize, num_smart,
-                                    only_momentum_anticipation)
+                                    only_momentum_anticipation,
+                                    reverse)
             alldata = [_read_hungergames_data(file_) for file_ in files]
 
             rel_indices = list(range(0, num_smart))
@@ -217,11 +312,11 @@ def run_data_analysis(only_momentum_anticipation=False):
     ftag = "embedded"
     if only_momentum_anticipation:
         ftag = "momentum"
+
+    revtag = "noreverse"
+    if reverse:
+        revtag = "reverse"
+
     import pandas as pd
     df = pd.DataFrame(df, columns=colnames)
-    df.to_csv(joinpath(config.DATA, f"{ftag}-hungergames-results.csv"), index=False)
-
-
-
-if __name__ == "__main__":
-    run_data_analysis()
+    df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)

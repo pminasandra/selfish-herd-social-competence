@@ -199,9 +199,9 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None,
     # who all are capable of anticipation?
     if isinstance(depth, int):
         if depth == config.MU:
-            capable_inds = list(range(len(orig_locations)))
+            capable_inds = range(len(orig_locations))
     else:
-        capable_inds = np.where(depth == config.MU)
+        capable_inds = list(np.where(depth == config.MU))[0]
     # everyone capable then asks themselves one question:
     for id_ in capable_inds:
     # 'if everyone else were in these new locations,
@@ -225,6 +225,3 @@ def momentum_based_anticipatory_reasoning(locations, locations_before=None,
     # after everyone has asked this question, store and return their new
     # movement decisions.
     return np.array(new_updated_locs)
-
-if __name__ == "__main__":
-    pass

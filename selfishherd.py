@@ -11,6 +11,7 @@ import pickle
 
 import numpy as np
 
+import config
 import movement
 import voronoi
 
@@ -71,6 +72,15 @@ class SelfishHerd:
                     next_locs = movement.recursive_reasoning(locs, vor, self.depth,
                                                                 locs)
                 elif _unique_elements(self.depth) == set([0, config.MU]):
+                    if timestep == 0:
+                        next_locs = movement.momentum_based_anticipatory_reasoning(locs,
+                                        None,
+                                        depth=self.depth)
+                    else:
+                        prev_locs = self.records.copy()[:,:,-2]
+                        next_locs = movement.momentum_based_anticipatory_reasoning(locs,
+                                        prev_locs,
+                                        depth=self.depth)
 
                 else:#not supported.
                     raise ValueError(f"Herd specified depths for members:\

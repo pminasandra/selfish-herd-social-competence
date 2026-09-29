@@ -63,7 +63,7 @@ if __name__ == "__main__":
                                     for uname in init_names]
                 args = zip(herds, filenames)
                 
-                pool = mp.Pool(35)
+                pool = mp.Pool()
                 pool.starmap(runmodel, args)
                 pool.close()
                 pool.join()
@@ -71,19 +71,8 @@ if __name__ == "__main__":
 
     if config.CONDUCT_HUNGERGAMES:
         os.makedirs(joinpath(config.DATA, "HungerGames"), exist_ok=True)
+        hungergames.simulate_all_hungergames()
 
-        for popsize in config.POP_S_SMART_GUYS_HG:
-            for num_smart in config.POP_S_SMART_GUYS_HG[popsize]:
-                print(f"Initialising hunger games for n={popsize}, smart={num_smart}.")
-                contests = hungergames.hungergames(popsize, 
-                                                num_smart,
-                                                config.NUM_REPEATS)
-                                                
-                # Now execute all these contests
-                pool = mp.Pool()
-                pool.starmap(runmodel, contests)
-                pool.close()
-                pool.join()
 
     if config.ANALYSE_HUNGERGAMES:
         hungergames.run_data_analysis()
