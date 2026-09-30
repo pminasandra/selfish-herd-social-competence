@@ -278,6 +278,14 @@ def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
                     "true_area_metric", "area_p_val"]
     df = []
 
+    ftag = "embedded"
+    if only_momentum_anticipation:
+        ftag = "momentum"
+
+    revtag = "noreverse"
+    if reverse:
+        revtag = "reverse"
+
     for popsize in config.POP_S_SMART_GUYS_HG:
         for num_smart in [5]: #NOTE: CAN CHANGE AS YOU LIKE
             print(f"Analysing n={popsize}, d_1={num_smart}.")
@@ -301,22 +309,13 @@ def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
             ax.axvline(true_area_metric, color="red")
             print(f"Out of {len(permuted_data)} sims, {sum(permuted_data >= true_area_metric)} were served.")
             ax.set_xlabel("Proportion of sims with smaller domains of danger")
-            utilities.saveimg(fig, f"stat_test_area_{popsize}")
+            utilities.saveimg(fig, f"{ftag}-{revtag}-stat_test_area_{popsize}")
             print()
             area_p_val = sum(permuted_data >= true_area_metric)/len(permuted_data)
             print("area_p_val:", area_p_val)
 
             df.append([popsize, num_smart,
                         true_area_metric, area_p_val])
-
-    ftag = "embedded"
-    if only_momentum_anticipation:
-        ftag = "momentum"
-
-    revtag = "noreverse"
-    if reverse:
-        revtag = "reverse"
-
     import pandas as pd
     df = pd.DataFrame(df, columns=colnames)
     df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)
