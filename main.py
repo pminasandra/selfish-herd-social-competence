@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
 
     if config.ANALYSE_HUNGERGAMES:
-        hungergames.run_data_analysis()
+        hungergames.run_all_analyses()
 
 
     if config.ANALYSE_DATA:

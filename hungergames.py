@@ -269,7 +269,7 @@ def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
         print(f"Permutation {i+1} of {num_perms}", end="\033[K\r")
         yield permutation(all_datasets, rel_indices, metricfunc)
 
-def run_data_analysis(only_momentum_anticipation=False, reverse=False):
+def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
     """
     Runs above analyses on simulated hungergames data.
     """
@@ -320,3 +320,18 @@ def run_data_analysis(only_momentum_anticipation=False, reverse=False):
     import pandas as pd
     df = pd.DataFrame(df, columns=colnames)
     df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)
+
+
+def run_all_analyses():
+
+    # embedded anticipation, d0 invades d1
+    run_data_analysis_on(only_momentum_anticipation=False, reverse=False)
+
+    # embedded anticipation, d1 invades d0
+    run_data_analysis_on(only_momentum_anticipation=False, reverse=True)
+
+    # momentum anticipation, d0 invades d\mu
+    run_data_analysis_on(only_momentum_anticipation=True, reverse=False)
+
+    # momentum anticipation, d\mu invades d0
+    run_data_analysis_on(only_momentum_anticipation=True, reverse=True)
