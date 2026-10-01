@@ -145,7 +145,7 @@ def simulate_all_hungergames():
             pool.join()
             del pool
 
-            # Then momentum only + roled reversed
+            # Then momentum only + roles reversed
             print(f"Reversed hunger-games for d_\mu invading d0. {popsize=}")
             contests = hungergames(popsize, num_smart, num_instances=config.NUM_REPEATS,
                         only_momentum_anticipation=True,
@@ -187,8 +187,8 @@ def _read_hungergames_data(filename):
 
 def extract_areas(dataset, rel_indices):
     """
-    For a given dataset containing d_0 and d_1 individuals,  returns mean Voronoi areas
-    for d_0 and d_1 individuals separately.
+    For a given dataset containing d_0 and d_1/d_\mu individuals,  returns mean log Voronoi areas
+    for d_0 and d_1/d_\mu individuals separately.
 
     Args:
         dataset (array-like, n×2×t): location data across time.
@@ -210,13 +210,8 @@ def extract_areas(dataset, rel_indices):
         vor = voronoi.get_bounded_voronoi(data_sub)
         areas = voronoi.get_areas(data_sub, vor)
 
-        area_d0 = -np.log(areas[non_indices]).mean()
-        area_d1 = -np.log(areas[rel_indices]).mean()
-#        area_d0 = np.log(areas[non_indices]).mean()
-#        area_d1 = np.log(areas[rel_indices]).mean()
-        # NOTE: -np.log is chosen because hypothesis testing
-        # functions below test for focal > non-focal, whereas 
-        # area_focal < area_non-focal is our hypothesis.
+        area_d0 = np.log(areas[non_indices]).mean()
+        area_d1 = np.log(areas[rel_indices]).mean()
         values_across_time.append([area_d0, area_d1])
 
     values_across_time = np.array(values_across_time)
@@ -240,7 +235,7 @@ def compute_metric(all_datasets, rel_indices, metricfunc):
                     for data in all_datasets]
     metricbases = np.array(metricbases)
     metricdiff = metricbases[:,1] - metricbases[:,0]
-    return sum(metricdiff>0)/len(metricdiff)
+    return sum(metricdiff < 0)/len(metricdiff)
 
 def permutation(all_datasets, rel_indices, metricfunc):
     """
@@ -260,14 +255,23 @@ def permutation(all_datasets, rel_indices, metricfunc):
                         replace=False)
     return compute_metric(all_datasets, fake_indices, metricfunc)
 
+def _mp_perm_helper(all_datasets, rel_indices, metricfunc):
+    return permutation(all_datasets, rel_indices, metricfunc)
+
 def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
     """
     *GENERATOR* on permutations
     """
-    print()
+    tgts = []
     for i in range(num_perms):
-        print(f"Permutation {i+1} of {num_perms}", end="\033[K\r")
-        yield permutation(all_datasets, rel_indices, metricfunc)
+        tgts.append((all_datasets, rel_indices, metricfunc))
+
+    pool = mp.Pool()
+    results = pool.starmap(_mp_perm_helper, tgts)
+    pool.close()
+    pool.join()
+
+    return results
 
 def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
     """
@@ -305,10 +309,10 @@ def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
                 permuted_data.append(p)
             permuted_data = np.array(permuted_data)
             fig, ax = plt.subplots()
-            ax.hist(permuted_data, 75)
+            ax.hist(permuted_data, 70)
             ax.axvline(true_area_metric, color="red")
-            print(f"Out of {len(permuted_data)} sims, {sum(permuted_data >= true_area_metric)} were served.")
-            ax.set_xlabel("Proportion of sims with smaller domains of danger")
+            print(f"Out of {len(permuted_data)} sims, {sum(permuted_data <= true_area_metric)} had a bigger metric..")
+            ax.set_xlabel("Proportion of sims with smaller mean domains of danger")
             utilities.saveimg(fig, f"{ftag}-{revtag}-stat_test_area_{popsize}")
             print()
             area_p_val = sum(permuted_data >= true_area_metric)/len(permuted_data)
@@ -324,13 +328,17 @@ def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
 def run_all_analyses():
 
     # embedded anticipation, d0 invades d1
+    print("Anticipation with embedded model, no reverse invasion.")
     run_data_analysis_on(only_momentum_anticipation=False, reverse=False)
 
     # embedded anticipation, d1 invades d0
+    print("Anticipation with embedded model, reverse invasion.")
     run_data_analysis_on(only_momentum_anticipation=False, reverse=True)
 
     # momentum anticipation, d0 invades d\mu
+    print("Anticipation with momentum model, no reverse invasion.")
     run_data_analysis_on(only_momentum_anticipation=True, reverse=False)
 
     # momentum anticipation, d\mu invades d0
+    print("Anticipation with momentum model, reverse invasion.")
     run_data_analysis_on(only_momentum_anticipation=True, reverse=True)
