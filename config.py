@@ -13,9 +13,9 @@ formats=['png', 'pdf', 'svg']
 
 # Program flow
 RUN_SIMS = False
-CONDUCT_HUNGERGAMES = False
+CONDUCT_HUNGERGAMES = True
 ANALYSE_DATA = False
-ANALYSE_HUNGERGAMES = True
+ANALYSE_HUNGERGAMES = False
 
 
 # Gradient descent config
@@ -45,7 +45,8 @@ POP_S_SMART_GUYS_HG = {
     87: [5]
 } # these are how many d1/d_\mu individuals to have in each round
 
-HUNGERGAMES_TIME_LIMS = (250, 350)
+HUNGERGAMES_TIME_LIMS = (50, 110)
+HUNGERGAMES_TMAX = 50
 
 # Data analysis
 ANALYSE_POP_SIZES = [10, 25, 35, 50, 75, 87, 100]

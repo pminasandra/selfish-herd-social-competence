@@ -12,6 +12,7 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 
 import config
+import hungergames
 import measurements
 import voronoi
 
@@ -137,10 +138,11 @@ if __name__ == "__main__":
     for j in random.sample(range(500), 50):
         data = []
         for i in [0, 1, -1]:
-            tgt_file = measurements._files_for(100, i)
-            tgt_file = list(tgt_file)[j]
+            tgt_file = hungergames._hungergames_files_for(87, 5)
+            print(tgt_file)
+            tgt_file = list(tgt_file)[20]
             tgt_file = measurements._read_data(tgt_file)
             data.append(tgt_file)
 
     ani = animate_data(data, tmax=300, delay=2)
-    save_animation(ani, "mu-model-comp.gif")
+    save_animation(ani, "mu-model-comp-hungergames.gif")
