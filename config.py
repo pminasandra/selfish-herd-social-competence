@@ -41,11 +41,16 @@ TMAX = 500
 
 # Program flow for hungergames
 POP_S_SMART_GUYS_HG = {
+    10: [5],
+    15: [5],
+    20: [5],
     25: [5],
-    87: [5]
+    30: [5],
+    35: [5],
+    40: [5]
 } # these are how many d1/d_\mu individuals to have in each round
 
-HUNGERGAMES_TIME_LIMS = (50, 110)
+HUNGERGAMES_TIME_LIMS = (0, 50)
 HUNGERGAMES_TMAX = 50
 
 # Data analysis
