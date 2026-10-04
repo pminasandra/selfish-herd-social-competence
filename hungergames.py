@@ -107,7 +107,7 @@ def hungergames(gpsize, num_smart, num_instances,
 
     radius = np.sqrt(1e-3 / np.pi)#assuming initial area of 1e-3 units.
     for i in range(num_instances):
-        init_locs = uniform_points_in_circle(gpsize, radius=radius)
+        init_locs = uniform_points_in_circle(gpsize, center=(0.5, 0.5), radius=radius)
         herd, fname = hungergame(init_locs, num_smart,
                     momentum_anticipation=momentum_anticipation,
                     reverse=reverse)
