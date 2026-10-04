@@ -191,7 +191,7 @@ def _hungergames_files_for(gpsize, num_smart,
                     reverse=False):
 
     ftag = "embedded"
-    if only_momentum_anticipation:
+    if momentum_anticipation:
         ftag = "momentum"
 
     revtag = "noreverse"
@@ -199,7 +199,7 @@ def _hungergames_files_for(gpsize, num_smart,
         revtag = "reverse"
 
     datadir = joinpath(config.DATA, "HungerGames", f"{gpsize}")
-    fformat = f"{ftag}-{revtag}-{popsize}-n{num_smart}-*.pkl"
+    fformat = f"{ftag}-{revtag}-{gpsize}-n{num_smart}-*.pkl"
 
     files = glob.glob(joinpath(datadir, fformat))
 

@@ -135,14 +135,15 @@ def _joinlists(lol1, lol2):
     return lol_res
 
 if __name__ == "__main__":
-    for j in random.sample(range(500), 50):
-        data = []
-        for i in [0, 1, -1]:
-            tgt_file = hungergames._hungergames_files_for(87, 5)
-            print(tgt_file)
-            tgt_file = list(tgt_file)[20]
-            tgt_file = measurements._read_data(tgt_file)
-            data.append(tgt_file)
+#    for j in random.sample(range(500), 50):
+#        data = []
+#        for i in [0, 1, -1]:
+#            tgt_file = hungergames._hungergames_files_for(87, 5)
+#            print(tgt_file)
+#            tgt_file = list(tgt_file)[20]
+#            tgt_file = measurements._read_data(tgt_file)
+#            data.append(tgt_file)
 
-    ani = animate_data(data, tmax=300, delay=2)
-    save_animation(ani, "mu-model-comp-hungergames.gif")
+    data = hungergames._read_hungergames_data("/home/pranav/Projects/Selfish_Herd_Social_Competence/Data/HungerGames/25/embedded-noreverse-25-n5-5e760908-7e45-4c60-a591-58dee1893db3.pkl")
+    ani = animate_data([data], tmax=50, delay=0)
+    save_animation(ani, "hungergames_group.gif")
