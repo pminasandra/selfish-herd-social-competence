@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy.spatial import ConvexHull, QhullError
-
+from scipy.stats import ttest_1samp
 
 import config
 import measurements
@@ -209,162 +209,114 @@ def _read_hungergames_data(filename):
     with open(filename, "rb") as f:
         return pickle.load(f)
 
+def area_difference_metric(a_invader, a_resident):
+    """
+    Specific metric to be compared for both these areas.
+    """
+    mean_a_inv = np.log(a_invader.mean())
+    mean_a_res = np.log(a_resident.mean())
+    print(f"{mean_a_inv=}, {mean_a_res=}")
+    return mean_a_inv - mean_a_res
 
-# TODO: Re-do the below code with this in mind
-#def extract_areas(dataset, rel_indices):
-#    """
-#    For a given dataset containing d_0 and d_1/d_\mu individuals,  returns mean log Voronoi areas
-#    for d_0 and d_1/d_\mu individuals separately.
-#
-#    Args:
-#        dataset (array-like, n×2×t): location data across time.
-#        num_smart (int): starting from index 0, how many d_1 individuals.
-#
-#    Returns:
-#        tuple of floats: (area_d_0, area_d_1)
-#    """
-#    dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
-#                            config.HUNGERGAMES_TIME_LIMS[1]]
-#
-#
-#    ttotal = dataset.shape[2]
-#    values_across_time = []
-#    non_indices = list(range(dataset.shape[0]))
-#    non_indices = [j for j in non_indices if j not in rel_indices]
-#    for t in range(0, ttotal, 20):
-#        data_sub = dataset[:,:,t]
-#        vor = voronoi.get_bounded_voronoi(data_sub)
-#        areas = voronoi.get_areas(data_sub, vor)
-#
-#        area_d0 = np.log(areas[non_indices]).mean()
-#        area_d1 = np.log(areas[rel_indices]).mean()
-#        values_across_time.append([area_d0, area_d1])
-#
-#    values_across_time = np.array(values_across_time)
-#
-#    results =  values_across_time.mean(axis=0)
-#    return results[0], results[1]
-#
-#def compute_metric(all_datasets, rel_indices, metricfunc):
-#    """
-#    For a given metric func (of the type of extract_areas and
-#    extract_groupsizes), computes the function for all available data
-#    and computes a metric for the hypothesis that focals > nonfocals.
-#    Args:
-#        all_datasets (list)
-#        rel_indices (list): list of indices of focal individuals
-#        metricfunc (func): extract_groupsizes or extract_areas
-#    Returns:
-#        fraction of dataset cases where focal > nonfocal
-#    """
-#    metricbases = [metricfunc(data, rel_indices)\
-#                    for data in all_datasets]
-#    metricbases = np.array(metricbases)
-#    metricdiff = metricbases[:,1] - metricbases[:,0]
-#    return sum(metricdiff < 0)/len(metricdiff)
-#
-#def permutation(all_datasets, rel_indices, metricfunc):
-#    """
-#    For a given metric func (of the type of extract_areas and
-#    extract_groupsizes), computes the function for all available data
-#    and performs one permutation using non-focal individuals.
-#    Args:
-#        all_datasets (list)
-#        rel_indices (list): list of indices of focal individuals
-#        metricfunc (func): extract_groupsizes or extract_areas
-#    """
-#    
-#    avail_indices = list(range(all_datasets[0].shape[0]))
-#    avail_indices = [j for j in avail_indices if j not in rel_indices]
-#
-#    fake_indices = np.random.choice(avail_indices, len(rel_indices),
-#                        replace=False)
-#    return compute_metric(all_datasets, fake_indices, metricfunc)
-#
-#def _mp_perm_helper(all_datasets, rel_indices, metricfunc):
-#    return permutation(all_datasets, rel_indices, metricfunc)
-#
-#def permutations(all_datasets, rel_indices, metricfunc, num_perms=1000):
-#    """
-#    *GENERATOR* on permutations
-#    """
-#    tgts = []
-#    for i in range(num_perms):
-#        tgts.append((all_datasets, rel_indices, metricfunc))
-#
-#    pool = mp.Pool()
-#    results = pool.starmap(_mp_perm_helper, tgts)
-#    pool.close()
-#    pool.join()
-#
-#    return results
-#
-#def run_data_analysis_on(only_momentum_anticipation=False, reverse=False):
-#    """
-#    Runs above analyses on simulated hungergames data.
-#    """
-#
-#    colnames = ["popsize", "num_smart",
-#                    "true_area_metric", "area_p_val"]
-#    df = []
-#
-#    ftag = "embedded"
-#    if only_momentum_anticipation:
-#        ftag = "momentum"
-#
-#    revtag = "noreverse"
-#    if reverse:
-#        revtag = "reverse"
-#
-#    for popsize in config.POP_S_SMART_GUYS_HG:
-#        for num_smart in [5]: #NOTE: CAN CHANGE AS YOU LIKE
-#            print(f"Analysing n={popsize}, d_1={num_smart}.")
-#            files = _hungergames_files_for(popsize, num_smart,
-#                                    only_momentum_anticipation,
-#                                    reverse)
-#            alldata = [_read_hungergames_data(file_) for file_ in files]
-#
-#            rel_indices = list(range(0, num_smart))
-#
-## area data analyses
-#            true_area_metric = compute_metric(alldata, rel_indices,
-#                                                extract_areas)
-#            print("true_area_metric:", true_area_metric)
-#            permuted_data = []
-#            for p in permutations(alldata, rel_indices, extract_areas, num_perms=5000):
-#                permuted_data.append(p)
-#            permuted_data = np.array(permuted_data)
-#            fig, ax = plt.subplots()
-#            ax.hist(permuted_data, 70)
-#            ax.axvline(true_area_metric, color="red")
-#            print(f"Out of {len(permuted_data)} sims, {sum(permuted_data <= true_area_metric)} had a bigger metric..")
-#            ax.set_xlabel("Proportion of sims with smaller mean domains of danger")
-#            utilities.saveimg(fig, f"{ftag}-{revtag}-stat_test_area_{popsize}")
-#            print()
-#            area_p_val = sum(permuted_data >= true_area_metric)/len(permuted_data)
-#            print("area_p_val:", area_p_val)
-#
-#            df.append([popsize, num_smart,
-#                        true_area_metric, area_p_val])
-#    import pandas as pd
-#    df = pd.DataFrame(df, columns=colnames)
-#    df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)
-#
-#
-#def run_all_analyses():
-#
-#    # embedded anticipation, d0 invades d1
-#    print("Anticipation with embedded model, no reverse invasion.")
-#    run_data_analysis_on(only_momentum_anticipation=False, reverse=False)
-#
-#    # embedded anticipation, d1 invades d0
-#    print("Anticipation with embedded model, reverse invasion.")
-#    run_data_analysis_on(only_momentum_anticipation=False, reverse=True)
-#
-#    # momentum anticipation, d0 invades d\mu
-#    print("Anticipation with momentum model, no reverse invasion.")
-#    run_data_analysis_on(only_momentum_anticipation=True, reverse=False)
-#
-#    # momentum anticipation, d\mu invades d0
-#    print("Anticipation with momentum model, reverse invasion.")
-#    run_data_analysis_on(only_momentum_anticipation=True, reverse=True)
+def extract_area_diff_metric(dataset, rel_indices):
+    """
+    For a given dataset containing d_0 and d_1/d_\mu individuals, stores the area
+    difference score of Voronoi polygons for invader (rel_indices) vs resident
+    individuals.
+
+    Args:
+        dataset (array-like, n×2×t): location data across time.
+        rel_indices (array-like, index): which indices represent invader agents.
+
+    Returns:
+        tuple of floats: (area_d_0, area_d_1)
+    """
+    dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
+                            config.HUNGERGAMES_TIME_LIMS[1]]
+
+
+    ttotal = dataset.shape[2]
+    values_across_time = []
+    non_indices = list(range(dataset.shape[0]))
+    non_indices = [j for j in non_indices if j not in rel_indices]
+
+    for t in range(0, ttotal, config.HUNGERGAMES_T_SAMPLE_EVERY):
+        data_sub = dataset[:,:,t]
+        vor = voronoi.get_bounded_voronoi(data_sub)
+        areas = voronoi.get_areas(data_sub, vor)
+
+        area_resident = areas[non_indices]
+        area_invader = areas[rel_indices]
+
+        values_across_time.append(area_difference_metric(area_invader, area_resident))
+
+    values_across_time = np.array(values_across_time)
+
+    return values_across_time.mean()
+
+def run_data_analysis_on(momentum_anticipation=False, reverse=False):
+    """
+    Runs above analyses on simulated hungergames data.
+    """
+
+    colnames = ["gpsize", "num_smart",
+                    "mean_val", "area_p_val"]
+    df = []
+
+    ftag = "embedded"
+    if momentum_anticipation:
+        ftag = "momentum"
+
+    revtag = "noreverse"
+    if reverse:
+        revtag = "reverse"
+
+    import matplotlib.pyplot as plt
+    for gpsize in config.POP_S_SMART_GUYS_HG:
+        for num_smart in config.POP_S_SMART_GUYS_HG[gpsize]: #NOTE: CAN CHANGE AS YOU LIKE
+            print(f"Analysing n={gpsize}, n_invader={num_smart}.")
+
+            # read in all relevant files
+            files = _hungergames_files_for(gpsize, num_smart,
+                                    momentum_anticipation,
+                                    reverse)
+            alldata = [_read_hungergames_data(file_) for file_ in files]
+            rel_indices = list(range(0, num_smart))
+
+            # compute area-difference metric
+            metric_values = []
+            for dataset in alldata:
+                metric_values.append(extract_area_diff_metric(dataset, rel_indices))
+
+            plt.hist(metric_values, 100)
+            # Now the stats: H0: stat >= 0; H1: stat < 0
+            stat_results = ttest_1samp(metric_values, popmean=0, nan_policy='omit', alternative='less')
+
+            df.append([gpsize, num_smart,
+                        stat_results.statistic, stat_results.pvalue])
+        plt.show()
+        plt.clf(); plt.cla()
+    df = pd.DataFrame(df, columns=colnames)
+    df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)
+
+
+def run_all_analyses():
+    """
+    Define all hunger-games related analyses.
+    """
+
+    print("d1 invading population of d0")
+    run_data_analysis_on(momentum_anticipation=False, reverse=False)
+    print()
+
+    print("d0 invading population of d1")
+    run_data_analysis_on(momentum_anticipation=False, reverse=True)
+    print()
+
+    print("d\\mu invading population of d0")
+    run_data_analysis_on(momentum_anticipation=True, reverse=False)
+    print()
+
+    print("d0 invading population of d\\mu")
+    run_data_analysis_on(momentum_anticipation=True, reverse=True)
+    print()

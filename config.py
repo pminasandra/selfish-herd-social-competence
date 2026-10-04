@@ -13,9 +13,9 @@ formats=['png', 'pdf', 'svg']
 
 # Program flow
 RUN_SIMS = False
-CONDUCT_HUNGERGAMES = True
+CONDUCT_HUNGERGAMES = False
 ANALYSE_DATA = False
-ANALYSE_HUNGERGAMES = False
+ANALYSE_HUNGERGAMES = True
 
 
 # Gradient descent config
@@ -52,6 +52,7 @@ POP_S_SMART_GUYS_HG = {
 
 HUNGERGAMES_TIME_LIMS = (0, 50)
 HUNGERGAMES_TMAX = 50
+HUNGERGAMES_T_SAMPLE_EVERY = 5
 
 # Data analysis
 ANALYSE_POP_SIZES = [10, 25, 35, 50, 75, 87, 100]
