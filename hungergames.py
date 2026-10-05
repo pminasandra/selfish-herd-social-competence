@@ -209,95 +209,176 @@ def _read_hungergames_data(filename):
     with open(filename, "rb") as f:
         return pickle.load(f)
 
-def area_difference_metric(a_invader, a_resident):
+def extract_areas(dataset):
     """
-    Specific metric to be compared for both these areas.
-    """
-    mean_a_inv = np.log(a_invader.mean())
-    mean_a_res = np.log(a_resident.mean())
-    print(f"{mean_a_inv=}, {mean_a_res=}")
-    return mean_a_inv - mean_a_res
-
-def extract_area_diff_metric(dataset, rel_indices):
-    """
-    For a given dataset containing d_0 and d_1/d_\mu individuals, stores the area
-    difference score of Voronoi polygons for invader (rel_indices) vs resident
-    individuals.
+    Compute Voronoi areas once for all sampled time points.
 
     Args:
         dataset (array-like, n×2×t): location data across time.
-        rel_indices (array-like, index): which indices represent invader agents.
 
     Returns:
-        tuple of floats: (area_d_0, area_d_1)
+        np.ndarray (t_sampled × n): Voronoi area of each individual
+        at each sampled time point.
     """
-    dataset = dataset.copy()[:,:,config.HUNGERGAMES_TIME_LIMS[0]:
-                            config.HUNGERGAMES_TIME_LIMS[1]]
+    dataset = dataset.copy()[
+        :, :,
+        config.HUNGERGAMES_TIME_LIMS[0]:
+        config.HUNGERGAMES_TIME_LIMS[1]
+    ]
 
+    areas_across_time = []
 
-    ttotal = dataset.shape[2]
-    values_across_time = []
-    non_indices = list(range(dataset.shape[0]))
-    non_indices = [j for j in non_indices if j not in rel_indices]
+    for t in range(
+        0,
+        dataset.shape[2],
+        config.HUNGERGAMES_T_SAMPLE_EVERY
+    ):
+        data_sub = dataset[:, :, t]
 
-    for t in range(0, ttotal, config.HUNGERGAMES_T_SAMPLE_EVERY):
-        data_sub = dataset[:,:,t]
         vor = voronoi.get_bounded_voronoi(data_sub)
         areas = voronoi.get_areas(data_sub, vor)
 
-        area_resident = areas[non_indices]
-        area_invader = areas[rel_indices]
+        areas_across_time.append(areas)
 
-        values_across_time.append(area_difference_metric(area_invader, area_resident))
+    return np.asarray(areas_across_time)
 
-    values_across_time = np.array(values_across_time)
 
-    return values_across_time.mean()
-
-def run_data_analysis_on(momentum_anticipation=False, reverse=False):
+def u_metric(areas, rel_indices):
     """
-    Runs above analyses on simulated hungergames data.
-    """
+    Mean normalized Mann-Whitney U across time.
 
-    colnames = ["gpsize", "num_smart",
-                    "mean_val", "area_p_val"]
+    Args:
+        areas (array-like, t × n): Voronoi areas.
+        rel_indices: indices of special individuals.
+
+    Returns:
+        float: mean U across time.
+
+    U > 0.5 means special individuals tend to have smaller areas.
+    """
+    rel_indices = np.asarray(rel_indices)
+
+    is_special = np.zeros(areas.shape[1], dtype=bool)
+    is_special[rel_indices] = True
+
+    special = areas[:, is_special]
+    resident = areas[:, ~is_special]
+
+    # Shape: time × n_special × n_resident
+    comparisons = (
+        special[:, :, None] < resident[:, None, :]
+    )
+
+    ties = (
+        special[:, :, None] == resident[:, None, :]
+    )
+
+    u_by_time = (
+        comparisons.sum(axis=(1, 2))
+        + 0.5 * ties.sum(axis=(1, 2))
+    ) / (special.shape[1] * resident.shape[1])
+
+    return u_by_time.mean()
+
+
+def run_data_analysis_on(momentum_anticipation=False, reverse=False,
+                         n_permutations=config.HUNGERGAMES_NUM_PERM, seed=None):
+    """
+    Rank-based permutation analysis of Voronoi areas.
+
+    H0: special identity is unrelated to Voronoi-area ranking.
+    H1: special individuals tend to have smaller Voronoi areas.
+    """
+    colnames = ["gpsize", "num_smart", "stat", "area_p_val"]
     df = []
 
-    ftag = "embedded"
-    if momentum_anticipation:
-        ftag = "momentum"
+    rng = np.random.default_rng(seed)
 
-    revtag = "noreverse"
-    if reverse:
-        revtag = "reverse"
+    ftag = "momentum" if momentum_anticipation else "embedded"
+    revtag = "reverse" if reverse else "noreverse"
 
-    import matplotlib.pyplot as plt
     for gpsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in config.POP_S_SMART_GUYS_HG[gpsize]: #NOTE: CAN CHANGE AS YOU LIKE
+        for num_smart in config.POP_S_SMART_GUYS_HG[gpsize]:
+
             print(f"Analysing n={gpsize}, n_invader={num_smart}.")
 
-            # read in all relevant files
-            files = _hungergames_files_for(gpsize, num_smart,
-                                    momentum_anticipation,
-                                    reverse)
-            alldata = [_read_hungergames_data(file_) for file_ in files]
-            rel_indices = list(range(0, num_smart))
+            files = _hungergames_files_for(
+                gpsize,
+                num_smart,
+                momentum_anticipation,
+                reverse
+            )
 
-            # compute area-difference metric
-            metric_values = []
-            for dataset in alldata:
-                metric_values.append(extract_area_diff_metric(dataset, rel_indices))
+            alldata = [
+                _read_hungergames_data(file_)
+                for file_ in files
+            ]
 
-            plt.hist(metric_values, 100)
-            # Now the stats: H0: stat >= 0; H1: stat < 0
-            stat_results = ttest_1samp(metric_values, popmean=0, nan_policy='omit', alternative='less')
+            # ----------------------------------------------------------
+            # Expensive part: compute Voronoi areas ONCE.
+            # ----------------------------------------------------------
+            allareas = [
+                extract_areas(dataset)
+                for dataset in alldata
+            ]
 
-            df.append([gpsize, num_smart,
-                        stat_results.statistic, stat_results.pvalue])
-        plt.show()
-        plt.clf(); plt.cla()
+            # ----------------------------------------------------------
+            # Observed statistic
+            # ----------------------------------------------------------
+            rel_indices = np.arange(num_smart)
+
+            observed_u = [
+                u_metric(areas, rel_indices)
+                for areas in allareas
+            ]
+
+            stat = np.mean(observed_u)
+
+            # ----------------------------------------------------------
+            # Permutation null
+            # ----------------------------------------------------------
+            permuted_stats = np.empty(n_permutations)
+
+            for p in range(n_permutations):
+                permuted_u = []
+
+                for areas in allareas:
+
+                    # New random special identities for this simulation.
+                    # These identities remain fixed across all its timepoints.
+                    perm_indices = rng.choice(
+                        gpsize,
+                        size=num_smart,
+                        replace=False
+                    )
+
+                    permuted_u.append(
+                        u_metric(areas, perm_indices)
+                    )
+
+                permuted_stats[p] = np.mean(permuted_u)
+
+            # One-sided: large U = special individuals have smaller areas.
+            p_value = (
+                1 + np.sum(permuted_stats >= stat)
+            ) / (n_permutations + 1)
+
+            df.append([
+                gpsize,
+                num_smart,
+                stat,
+                p_value
+            ])
+
     df = pd.DataFrame(df, columns=colnames)
-    df.to_csv(joinpath(config.DATA, f"{ftag}-{revtag}-hungergames-results.csv"), index=False)
+
+    df.to_csv(
+        joinpath(
+            config.DATA,
+            f"{ftag}-{revtag}-hungergames-results.csv"
+        ),
+        index=False
+    )
 
 
 def run_all_analyses():
