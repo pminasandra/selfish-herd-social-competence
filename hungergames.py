@@ -37,17 +37,17 @@ def uniform_points_in_circle(n, center=(0, 0), radius=1):
     return np.column_stack((x, y))
 
 
-def hungergame(init_locs, num_smart,
+def hungergame(init_locs, num_invaders,
                 momentum_anticipation=False,
                 reverse=False):
     """
     Sets up an individual contest, starting a smart selfish herd
-    of n individuals, of which the first num_smart are d_1 and the rest
+    of n individuals, of which the first num_invaders are d_1 and the rest
     are d_0.
 
     Args:
         init_locs (n×2 array-like): initial locations of agents
-        num_smart (int): how many d1 individuals
+        num_invaders (int): how many d1 individuals
         momentum_anticipation (bool): whether agents use d_1 or d_\mu anticipation.
             True for d_\mu.
         reverse (bool): whether roles of d_0 and d_1/d_\mu agents should be swapped.
@@ -60,14 +60,14 @@ def hungergame(init_locs, num_smart,
     depths = np.zeros(num_inds).astype(int)
     if not momentum_anticipation:
         if not reverse:
-            depths[:num_smart] = 1
+            depths[:num_invaders] = 1
         else:
-            depths[num_smart:] = 1
+            depths[num_invaders:] = 1
     else:
         if not reverse:
-            depths[:num_smart] = config.MU
+            depths[:num_invaders] = config.MU
         else:
-            depths[num_smart:] = config.MU
+            depths[num_invaders:] = config.MU
 
     herd = selfishherd.SelfishHerd(num_inds, depths, init_locs)
     uname = str(uuid.uuid4())
@@ -85,12 +85,12 @@ def hungergame(init_locs, num_smart,
     tgtdir = joinpath(config.DATA, "HungerGames", f"{gpsize}")
     os.makedirs(tgtdir, exist_ok=True)
     fname = joinpath(tgtdir,
-                f"{ftag}-{revtag}-{num_inds}-n{num_smart}-{uname}.pkl")
+                f"{ftag}-{revtag}-{num_inds}-n{num_invaders}-{uname}.pkl")
 
     return herd, fname
 
 
-def hungergames(gpsize, num_smart, num_instances,
+def hungergames(gpsize, num_invaders, num_instances,
                     momentum_anticipation=False,
                     reverse=False):
     """
@@ -98,7 +98,7 @@ def hungergames(gpsize, num_smart, num_instances,
     Wrapper around hungergame(...)
     Args:
         gpsize (int): group size
-        num_smart (int): number of d_1 inds
+        num_invaders (int): number of d_1 inds
         num_instances (int): how many simulations are needed
         momentum_anticipation (bool): whether agents use d_1 or d_\mu anticipation.
             True for d_\mu.
@@ -108,7 +108,7 @@ def hungergames(gpsize, num_smart, num_instances,
     radius = np.sqrt(1e-3 / np.pi)#assuming initial area of 1e-3 units.
     for i in range(num_instances):
         init_locs = uniform_points_in_circle(gpsize, center=(0.5, 0.5), radius=radius)
-        herd, fname = hungergame(init_locs, num_smart,
+        herd, fname = hungergame(init_locs, num_invaders,
                     momentum_anticipation=momentum_anticipation,
                     reverse=reverse)
 
@@ -130,11 +130,11 @@ def simulate_all_hungergames():
     Runs all simulations needed for the paper.
     """
     for gpsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in config.POP_S_SMART_GUYS_HG[gpsize]:
+        for num_invaders in config.POP_S_SMART_GUYS_HG[gpsize]:
 
             # First the normal hunger-games
-            print(f"Ordinary hunger-games for d1 invading d0. {gpsize=}")
-            contests = hungergames(gpsize, num_smart, num_instances=config.NUM_REPEATS,
+            print(f"Ordinary hunger-games: d1 invading d0. {gpsize=}")
+            contests = hungergames(gpsize, num_invaders, num_instances=config.NUM_REPEATS,
                         momentum_anticipation=False,
                         reverse=False)
 
@@ -146,8 +146,8 @@ def simulate_all_hungergames():
             del contests
 
             # Then with the roles reversed
-            print(f"Reversed hunger-games for d1 invading d0. {gpsize=}")
-            contests = hungergames(gpsize, num_smart, num_instances=config.NUM_REPEATS,
+            print(f"Reversed hunger-games: d0 invading d1. {gpsize=}")
+            contests = hungergames(gpsize, num_invaders, num_instances=config.NUM_REPEATS,
                         momentum_anticipation=False,
                         reverse=True)
 
@@ -159,8 +159,8 @@ def simulate_all_hungergames():
             del contests
 
             # Then with momentum only, for d\mu invading d0
-            print(f"Ordinary hunger-games for d_\mu invading d0. {gpsize=}")
-            contests = hungergames(gpsize, num_smart, num_instances=config.NUM_REPEATS,
+            print(f"Momentum hunger-games: d_\mu invading d0. {gpsize=}")
+            contests = hungergames(gpsize, num_invaders, num_instances=config.NUM_REPEATS,
                         momentum_anticipation=True,
                         reverse=False)
 
@@ -172,8 +172,8 @@ def simulate_all_hungergames():
             del contests
 
             # Then momentum only + roles reversed, d0 invading d\mu
-            print(f"Reversed hunger-games for d_\mu invading d0. {gpsize=}")
-            contests = hungergames(gpsize, num_smart, num_instances=config.NUM_REPEATS,
+            print(f"Momentum hunger-games: d0 invading d_\mu. {gpsize=}")
+            contests = hungergames(gpsize, num_invaders, num_instances=config.NUM_REPEATS,
                         momentum_anticipation=True,
                         reverse=True)
 
@@ -186,7 +186,7 @@ def simulate_all_hungergames():
 
 
 
-def _hungergames_files_for(gpsize, num_smart,
+def _hungergames_files_for(gpsize, num_invaders,
                     momentum_anticipation=False,
                     reverse=False):
 
@@ -199,7 +199,7 @@ def _hungergames_files_for(gpsize, num_smart,
         revtag = "reverse"
 
     datadir = joinpath(config.DATA, "HungerGames", f"{gpsize}")
-    fformat = f"{ftag}-{revtag}-{gpsize}-n{num_smart}-*.pkl"
+    fformat = f"{ftag}-{revtag}-{gpsize}-n{num_invaders}-*.pkl"
 
     files = glob.glob(joinpath(datadir, fformat))
 
@@ -289,7 +289,15 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
     H0: special identity is unrelated to Voronoi-area ranking.
     H1: special individuals tend to have smaller Voronoi areas.
     """
-    colnames = ["gpsize", "num_smart", "stat", "area_p_val"]
+    colnames = [
+        "gpsize",
+        "num_invaders",
+        "stat",
+        "stat_se",
+        "area_p_val",
+        "null_mean",
+        "null_std",
+    ]
     df = []
 
     rng = np.random.default_rng(seed)
@@ -298,13 +306,13 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
     revtag = "reverse" if reverse else "noreverse"
 
     for gpsize in config.POP_S_SMART_GUYS_HG:
-        for num_smart in config.POP_S_SMART_GUYS_HG[gpsize]:
+        for num_invaders in config.POP_S_SMART_GUYS_HG[gpsize]:
 
-            print(f"Analysing n={gpsize}, n_invader={num_smart}.")
+            print(f"Analysing n={gpsize}, n_invader={num_invaders}.")
 
             files = _hungergames_files_for(
                 gpsize,
-                num_smart,
+                num_invaders,
                 momentum_anticipation,
                 reverse
             )
@@ -314,9 +322,7 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
                 for file_ in files
             ]
 
-            # ----------------------------------------------------------
-            # Expensive part: compute Voronoi areas ONCE.
-            # ----------------------------------------------------------
+            # Compute Voronoi areas once.
             allareas = [
                 extract_areas(dataset)
                 for dataset in alldata
@@ -325,14 +331,20 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
             # ----------------------------------------------------------
             # Observed statistic
             # ----------------------------------------------------------
-            rel_indices = np.arange(num_smart)
+            rel_indices = np.arange(num_invaders)
 
-            observed_u = [
+            observed_u = np.array([
                 u_metric(areas, rel_indices)
                 for areas in allareas
-            ]
+            ])
 
             stat = np.mean(observed_u)
+
+            # Standard error across independent simulation instances.
+            stat_se = (
+                np.std(observed_u, ddof=1)
+                / np.sqrt(len(observed_u))
+            )
 
             # ----------------------------------------------------------
             # Permutation null
@@ -344,11 +356,11 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
 
                 for areas in allareas:
 
-                    # New random special identities for this simulation.
-                    # These identities remain fixed across all its timepoints.
+                    # Random identities within each simulation, fixed
+                    # across time within that simulation.
                     perm_indices = rng.choice(
                         gpsize,
-                        size=num_smart,
+                        size=num_invaders,
                         replace=False
                     )
 
@@ -356,18 +368,26 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
                         u_metric(areas, perm_indices)
                     )
 
+                # Mean U across simulation instances for this permutation.
                 permuted_stats[p] = np.mean(permuted_u)
 
-            # One-sided: large U = special individuals have smaller areas.
+            # One-sided: large U = invaders have smaller areas.
             p_value = (
                 1 + np.sum(permuted_stats >= stat)
             ) / (n_permutations + 1)
 
+            # Mean and SD of the permutation-null distribution.
+            null_mean = np.mean(permuted_stats)
+            null_std = np.std(permuted_stats, ddof=1)
+
             df.append([
                 gpsize,
-                num_smart,
+                num_invaders,
                 stat,
-                p_value
+                stat_se,
+                p_value,
+                null_mean,
+                null_std,
             ])
 
     df = pd.DataFrame(df, columns=colnames)
@@ -380,24 +400,134 @@ def run_data_analysis_on(momentum_anticipation=False, reverse=False,
         index=False
     )
 
+    return df
+
 
 def run_all_analyses():
     """
-    Define all hunger-games related analyses.
+    Run all hunger-games analyses and plot observed mean U +/- SE against
+    the permutation-null mean +/- SD.
     """
 
     print("d1 invading population of d0")
-    run_data_analysis_on(momentum_anticipation=False, reverse=False)
+    d1_d0 = run_data_analysis_on(
+        momentum_anticipation=False,
+        reverse=False
+    )
     print()
 
     print("d0 invading population of d1")
-    run_data_analysis_on(momentum_anticipation=False, reverse=True)
+    d0_d1 = run_data_analysis_on(
+        momentum_anticipation=False,
+        reverse=True
+    )
     print()
 
     print("d\\mu invading population of d0")
-    run_data_analysis_on(momentum_anticipation=True, reverse=False)
+    dmu_d0 = run_data_analysis_on(
+        momentum_anticipation=True,
+        reverse=False
+    )
     print()
 
     print("d0 invading population of d\\mu")
-    run_data_analysis_on(momentum_anticipation=True, reverse=True)
+    d0_dmu = run_data_analysis_on(
+        momentum_anticipation=True,
+        reverse=True
+    )
     print()
+
+    # --------------------------------------------------------------
+    # Plot
+    # --------------------------------------------------------------
+    fig, axes = plt.subplots(
+        1, 2,
+        figsize=(10, 4),
+        sharex=True,
+        sharey=False
+    )
+
+    panels = [
+        (
+            axes[0],
+            d1_d0,
+            d0_d1,
+            r"$d_1$",
+            r"$d_1 \rightarrow d_0$",
+            r"$d_0 \rightarrow d_1$",
+        ),
+        (
+            axes[1],
+            dmu_d0,
+            d0_dmu,
+            r"$d_\mu$",
+            r"$d_\mu \rightarrow d_0$",
+            r"$d_0 \rightarrow d_\mu$",
+        ),
+    ]
+
+    for ax, forward, reverse, title, forward_label, reverse_label in panels:
+
+        # Theoretical null expectation.
+        ax.axhline(
+            0.5,
+            ls="--",
+            lw=1,
+            color="0.5",
+            zorder=0
+        )
+
+        # Slight horizontal offsets prevent forward/reverse overlap.
+        offset = 0.35
+
+        # ----------------------------------------------------------
+        # Permutation null: mean +/- SD
+        # ----------------------------------------------------------
+        for data, dx in [(forward, -offset), (reverse, offset)]:
+            x = data["gpsize"].to_numpy() + dx
+
+            ax.errorbar(
+                x,
+                data["null_mean"],
+                yerr=data["null_std"],
+                fmt="s",
+                color="0.7",
+                capsize=3,
+                zorder=1
+            )
+
+        # ----------------------------------------------------------
+        # Observed mean U +/- SE
+        # ----------------------------------------------------------
+        ax.errorbar(
+            forward["gpsize"] - offset,
+            forward["stat"],
+            yerr=forward["stat_se"],
+            fmt="o-",
+            capsize=3,
+            label=forward_label,
+            zorder=3
+        )
+
+        ax.errorbar(
+            reverse["gpsize"] + offset,
+            reverse["stat"],
+            yerr=reverse["stat_se"],
+            fmt="s-",
+            capsize=3,
+            label=reverse_label,
+            zorder=3
+        )
+
+        ax.set_title(title)
+        ax.set_xlabel("Group size")
+        ax.legend(frameon=False)
+
+    axes[0].set_ylabel("Mean normalized U")
+
+    fig.tight_layout()
+
+    utilities.saveimg(
+        fig,
+        "hungergames-area-permutation-results.pdf"
+    )
