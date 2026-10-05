@@ -139,7 +139,7 @@ def recursive_reasoning(locations, vor, desired_depth,
 
         # if current individual doesn't operate at or above current depth,
         # she doesn't update anything anymore
-        if desired_depth[id_] < curr_depth:
+        if desired_depth[id_] <= curr_depth:
             new_updated_locs.append(locations[id_])
         else:
             new_locs_with_me = new_locs.copy()
