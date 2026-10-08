@@ -573,5 +573,5 @@ if __name__ == "__main__":
         for depth in config.ANALYSE_DEPTHS:
             tgt_file = joinpath(config.DATA, "Results",
                                     f"speed-{pop_size}-d{depth}.csv")
-            data = make_speed_csv_for(pop_size, depth, timerange, eps=0.02)
+            data = make_edgeeffect_csv_for(pop_size, depth, timerange, eps=0.02)
             data.to_csv(tgt_file, index=False)
