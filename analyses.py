@@ -84,7 +84,7 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
     sns.set(style="whitegrid")
     g = sns.violinplot(data=df, x="pop_size", y=ydesc, hue="depth",
                         dodge=True, ax=ax, inner='box', palette=palette,
-                        bw_method=0.05
+                        bw_method=0.05, hue_order=[0, 1, 2, 3, config.MU]
                     )
     ax.set_xlabel("Population size")
     ax.set_ylabel(ydesc)
@@ -101,6 +101,137 @@ def make_violinplot(fn, ydesc, fig=None, ax=None, palette="pastel"):
 
     return fig, ax
 
+def make_bootstrap_violinplot(
+    fn, ydesc, n_bootstraps=1000, fig=None, ax=None,
+    palette="pastel", seed=None
+):
+    """
+    Plot bootstrap distributions of medians as violins, with black
+    error bars showing the IQR of the original data.
+
+    Bootstrap resampling is performed independently for each
+    (pop_size, depth) combination.
+    """
+    rng = np.random.default_rng(seed)
+    records = []
+    original_stats = []
+
+    depth_order = [0, 1, 2, 3, -1]
+    pop_order = list(config.ANALYSE_POP_SIZES)
+
+    for pop_size in pop_order:
+        for depth in depth_order:
+            if depth not in config.ANALYSE_DEPTHS:
+                continue
+
+            print(f"Analysing {ydesc} for {pop_size=} {depth=}")
+
+            values = []
+            files = measurements._files_for(pop_size, depth)
+
+            for f in files:
+                data = measurements._read_data(f)
+                values.extend(np.asarray(fn(data)).ravel())
+
+            values = np.asarray(values, dtype=float)
+            values = values[np.isfinite(values)]
+
+            if len(values) == 0:
+                continue
+
+            # Original distribution statistics
+            q25, median, q75 = np.percentile(values, [25, 50, 75])
+
+            original_stats.append({
+                "pop_size": pop_size,
+                "depth": depth,
+                "q25": q25,
+                "median": median,
+                "q75": q75
+            })
+
+            # Bootstrap distribution of the median
+            for _ in range(n_bootstraps):
+                sample = rng.choice(values, size=len(values), replace=True)
+                records.append({
+                    "pop_size": pop_size,
+                    "depth": depth,
+                    "median": np.median(sample)
+                })
+
+    df = pd.DataFrame.from_records(records)
+    stats = pd.DataFrame.from_records(original_stats)
+
+    if fig is None or ax is None:
+        fig, ax = plt.subplots()
+
+    sns.set(style="whitegrid")
+
+    sns.boxplot(
+        data=df,
+        x="pop_size",
+        y="median",
+        hue="depth",
+        order=pop_order,
+        hue_order=depth_order,
+        dodge=True,
+        palette=palette,
+        width=0.8,
+        showfliers=False,
+        ax=ax
+    )
+
+    colors = sns.color_palette(palette, n_colors=len(depth_order))
+
+    # Align error bars with the centers of the dodged violins
+    n_hue = len(depth_order)
+    width = 0.8
+
+    for _, row in stats.iterrows():
+        i = pop_order.index(row["pop_size"])
+        j = depth_order.index(row["depth"])
+
+        x = i + (j - (n_hue - 1) / 2) * width / n_hue
+
+        ax.errorbar(
+            x,
+            row["median"],
+            yerr=[
+                [row["median"] - row["q25"]],
+                [row["q75"] - row["median"]]
+            ],
+            fmt="o",
+            color="black",
+            markerfacecolor=colors[j],
+            markeredgecolor="black",
+            markersize=5,
+            capsize=3,
+            elinewidth=1.2,
+            zorder=10
+        )
+
+    ax.set_xlabel("Population size")
+    ax.set_ylabel(ydesc)
+
+    handles, labels = ax.get_legend_handles_labels()
+    labels = [
+        r"$d_\mu$" if s == "-1" else rf"$d_{{{s}}}$"
+        for s in labels
+    ]
+
+    ax.legend(
+        handles, labels,
+        title="Depth of reasoning",
+        fontsize="x-small",
+        title_fontsize="x-small",
+        handlelength=1.5,
+        handletextpad=0.4,
+        labelspacing=0.3,
+        borderpad=0.5
+    )
+
+    fig.tight_layout()
+    return fig, ax
                 
 def compare_gpsize_area_relation():
     plot_data = {}
@@ -307,7 +438,8 @@ def plot_group_size_ccdfs_displot(
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(11.45, 4.921))
-    make_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="polarisation", fig=fig, ax=ax, palette="pastel")
+    make_bootstrap_violinplot(measurements.extract_polarisations_exclude_edge, ydesc="Polarisation", fig=fig, ax=ax, palette="pastel")
+    ax.set_ylim((0.0, 1.0))
     utilities.saveimg(fig, "vplot-polarisations")
-    compare_gpsize_area_relation()
-    plot_group_size_ccdfs_displot()
+#    compare_gpsize_area_relation()
+#    plot_group_size_ccdfs_displot()
